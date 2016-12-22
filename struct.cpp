@@ -12,8 +12,8 @@ struct Lnode{
 
 struct Superblock{
     char fsname[16];
-    int  inode_number;
-    int  inode_usered;
+    int  inode_number;//一共有多少inode
+    int  inode_usered;//已经使用了的inode
     int  magicnumber;//一个数字
     int  root_inode;
     Lnode blocks;//存放当前可用的

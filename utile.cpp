@@ -23,7 +23,7 @@ Superblock init_superBolck(){
     strcpy(spb.fsname,"easyfs");
     spb.inode_number=(data_start-2)*block_size/sizeof(Inode);
     spb.root_inode=0;//根文件夹的inode的下标
-    spb.inode_usered=1;//已经使用了的inode的数量
+    spb.inode_usered=1;//已经使用了的inode的数量,根节点已经使用了一个
     spb.blocks.free=100;
     spb.blocks.next_adress=148;
 
@@ -174,15 +174,11 @@ int getaFreeBlockAddress(Superblock spb){
             for(int i=0;i<100;i++){
                 spb.blocks.blocks[i]=a_lnode.blocks[i];
             }
-
             int freeblock=getaFreeBlockAddress(spb);
-
             //将spb写回
             fs.seekp(sizeof(Block),ios_base::beg);
             fs.write((char* )&spb,sizeof(spb));
             return freeblock;
-
-
         }
     }else{
         cout<<"出现未知错误"<<endl;
@@ -227,7 +223,7 @@ void init_dir(string diskname){
     //前缀,目录名,permission,userid ,groupid;
     mkdir("/root","drwxr-xr-w",0,0);
     mkdir("/home","drwxr-xr-w",0,0);
-    mkdir("/etc/passwd","drwxr-xr-w",0,0);
+    mkdir("/etc","drwxr-xr-w",0,0);
 }
 
 //新建一个文件夹
@@ -243,6 +239,8 @@ int mkdir(string path,string permission,int userid ,int groupid)
     // parent_node=getInode(parent_path);
 
     cout<<parent_path<<endl;
+
+    parent_node=getInode(parent_path);
 
     return 0;
 
@@ -280,28 +278,121 @@ Inode readInode(int index){
     return temp;
 }
 
-//路径到inode的节点
-Inode getInode(string path){
-    Superblock spb=getSuperBlock(disk);
 
-    if(path=="/"){
-        return readInode(spb.root_inode);
-    }else{
-        Inode temp=readInode(spb.root_inode);
-        string rest=path.substr(1,path.length());
-        int i=0;
-        int flag=false;//是否是最后一个目录项
-        for(;i<rest.length();i++){
-            if(rest[i]=='/'){
-                flag=true;
-                break;
+//inode代表一个目录的inode,从中找到相应的文件(目录或者文件)所对应的inode的id
+//如果没有找到则返回一个比最大的inode的编号还要大的数字
+int getInodeidFromDir(Inode inode,string filename){
+    Superblock spb=getSuperBlock(disk);
+    fstream fs;
+    fs.open(disk.c_str(),ios_base::in|ios_base::binary);
+    unsigned int count=0;//查看是否已经查找了所有的目录项了
+    unsigned int dirs=inode.filesize/sizeof(Directory);//最多有多少的目录项
+    int i=0;
+    for(i=0;i<4;i++){
+        int address=inode.blockaddress[i];
+        fs.seekg(address*sizeof(Block),ios_base::beg);
+        while(count<=(sizeof(Block)/sizeof(Directory))){
+            Directory temp;
+            fs.read((char*)&temp,sizeof(temp));
+            count++;
+            string name=temp.name;
+            if(name==filename){
+                return temp.inode_id;
+            }
+            if(count>=dirs){
+                return spb.inode_number+1; //已经找完了还是没找到
             }
         }
-        if(i==rest.length()){//说明已经是最后一个目录项了
-        }
-
-
-
     }
 
+    //间接地址,用short int存放
+    i=4;
+    int address=inode.blockaddress[i];
+    for(unsigned int j=0;j<(sizeof(Block)/sizeof(short int));j++){
+        short int real_address;
+        fs.seekg(address*sizeof(Block)+j*(sizeof(short int)),ios_base::beg);
+        fs.read((char *)&real_address,sizeof(real_address));
+        fs.seekg(real_address*sizeof(Block),ios_base::beg);
+        while(count<=(sizeof(Block)/sizeof(Directory))){
+            Directory temp;
+            fs.read((char*)&temp,sizeof(temp));
+            count++;
+            string name=temp.name;
+            if(name==filename){
+                return temp.inode_id;
+            }
+            if(count>=dirs){
+                return spb.inode_number+1; //已经找完了还是没找到
+            }
+        }
+    }
+
+    i=5;
+    address=inode.blockaddress[i];
+    for(unsigned int j=0;j<(sizeof(Block)/sizeof(short int));j++){
+        short int real_address;
+        fs.seekg(address*sizeof(Block)+j*(sizeof(short int)),ios_base::beg);
+        fs.read((char *)&real_address,sizeof(real_address));
+
+        short int real_real_adress;
+        for(unsigned int k=0;k<(sizeof(Block)/sizeof(short int));k++)
+        {
+            fs.seekg(real_address*sizeof(Block)+k*sizeof(short int),ios_base::beg);
+            fs.read((char *)&real_real_adress,sizeof(real_real_adress));
+            fs.seekg(real_real_adress*sizeof(Block),ios_base::beg);
+
+            while(count<=(sizeof(Block)/sizeof(Directory))){
+                Directory temp;
+                fs.read((char*)&temp,sizeof(temp));
+                count++;
+                string name=temp.name;
+                if(name==filename){
+                    return temp.inode_id;
+                }
+                if(count>=dirs){
+                    return spb.inode_number+1; //已经找完了还是没找到
+                }
+            }
+        }
+    }
+
+
+    return 0;
+}
+
+
+//路径对应inode的节点,绝对路径
+//没找到则返回一个文件大小为-1的inode
+Inode getInode(string path){
+    Superblock spb=getSuperBlock(disk);
+    fstream fs;
+    fs.open(disk.c_str(),ios_base::in|ios_base::binary);
+    int result;//目标inode的编号
+    string target="";
+    if(path=="/"){
+        result=spb.inode_number;
+    }else{
+        unsigned int i,j;i=j=1;
+        Inode Parent=getInode("/");//从根节点开始
+        while(j<path.length()){
+
+            for(;j<path.length();j++){
+                if(path[j]=='/')
+                    break;
+            }
+            target=path.substr(i,j);
+            result=getInodeidFromDir(Parent,target);
+            if(result>spb.inode_number){
+                Inode blank;
+                blank.filesize=-1;
+                return blank;
+            }else{
+                Parent=readInode(result);
+                j++;
+                i=j;
+            }
+
+        }
+    }
+    return readInode(result);
 }
