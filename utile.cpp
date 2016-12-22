@@ -6,9 +6,11 @@
 #include"config.h"
 using namespace std;
 
-
+string disk="virtualdisk";
+string get_parentPath(string path);
 int getaFreeBlockAddress(Superblock spb);
-
+int mkdir(string path,string permission,int userid ,int groupid);
+Inode getInode(string path);
 //创建初始文件夹
 void init_dir(string diskname);
 //读取并返回当前的superblock;
@@ -21,6 +23,7 @@ Superblock init_superBolck(){
     strcpy(spb.fsname,"easyfs");
     spb.inode_number=(data_start-2)*block_size/sizeof(Inode);
     spb.root_inode=0;//根文件夹的inode的下标
+    spb.inode_usered=1;//已经使用了的inode的数量
     spb.blocks.free=100;
     spb.blocks.next_adress=148;
 
@@ -222,5 +225,83 @@ void init_dir(string diskname){
     fs.write((char*) &d2,sizeof(d2));
 
     //前缀,目录名,permission,userid ,groupid;
-    // mkdir("/",""
+    mkdir("/root","drwxr-xr-w",0,0);
+    mkdir("/home","drwxr-xr-w",0,0);
+    mkdir("/etc/passwd","drwxr-xr-w",0,0);
+}
+
+//新建一个文件夹
+int mkdir(string path,string permission,int userid ,int groupid)
+{
+
+    //先得到之间的目录的inode的id
+    //将之前的inode的文件加入一个新的内容
+    Superblock spb=getSuperBlock(disk);
+    Inode parent_node,new_node;
+
+    string parent_path=get_parentPath(path);
+    // parent_node=getInode(parent_path);
+
+    cout<<parent_path<<endl;
+
+    return 0;
+
+}
+
+//得到一个目录的父文件夹的路径
+//  /  返回 /
+//  /etc ===> /
+//  /etc/passwd ===>  /etc
+string get_parentPath(string path){
+    if(path=="/"){
+        return "/";
+    }else{
+        char seperator='/';
+        int l=path.length();
+        int i=l;
+        while(path[i]!=seperator){
+            i--;
+        }
+        if (i==0){
+            return path.substr(0,1);
+        }else{
+            return path.substr(0,i);
+        }
+    }
+}
+
+Inode readInode(int index){
+    Inode temp;
+    fstream fs;
+    fs.open(disk.c_str(),ios_base::in|ios_base::binary);
+    fs.seekg(2*sizeof(Block)+index*sizeof(Inode),ios_base::beg);
+    fs.read((char *)&temp,sizeof(temp));
+    fs.close();
+    return temp;
+}
+
+//路径到inode的节点
+Inode getInode(string path){
+    Superblock spb=getSuperBlock(disk);
+
+    if(path=="/"){
+        return readInode(spb.root_inode);
+    }else{
+        Inode temp=readInode(spb.root_inode);
+        string rest=path.substr(1,path.length());
+        int i=0;
+        int flag=false;//是否是最后一个目录项
+        for(;i<rest.length();i++){
+            if(rest[i]=='/'){
+                flag=true;
+                break;
+            }
+        }
+        if(i==rest.length()){//说明已经是最后一个目录项了
+        }
+
+
+
+    }
+
 }

@@ -13,6 +13,7 @@ struct Lnode{
 struct Superblock{
     char fsname[16];
     int  inode_number;
+    int  inode_usered;
     int  magicnumber;//一个数字
     int  root_inode;
     Lnode blocks;//存放当前可用的
@@ -25,13 +26,14 @@ struct Block{
 
 //目录
 struct Directory{
-    char name[16];  //文件名
+    char name[14];  //文件名
     short int inode_id; //inode号
 };
 
 
 //Inode的结构
 struct Inode{
+    char filename[14];      //文件名
     int inode_id;			//i节点号
     int user_id;			//用户组ID
     int group_id;			//所属组ID
