@@ -21,15 +21,13 @@ void init(){
     }else{
         cout<<"成功打开虚拟磁盘"<<endl;
 
-        init_fs(diskname);
+        init_fs();
 
-        if(gooddisk(diskname)){
+        if(gooddisk()){
             cout<<"发现文件系统,准备装载"<<endl;
-            // loadfs(diskname);
         }else{
             cout<<"未发现文件系统,准备重新初始化"<<endl;
-            init_fs(diskname);
-            // loadfs(diskname);
+            init_fs();
         }
     }
 

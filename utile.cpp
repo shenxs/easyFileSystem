@@ -8,15 +8,12 @@
 #include"lowio.cpp"
 using namespace std;
 
-// string disk="virtualdisk";
-string get_parentPath(string path);
-int getaFreeBlockAddress(Superblock spb);
+int getaFreeBlockAddress();
 int mkdir(string path,string permission,int userid ,int groupid);
 Inode getInode(string path);
 //创建初始文件夹
-void init_dir(string diskname);
+void init_dir();
 //读取并返回当前的superblock;
-Superblock getSuperBlock(string diskname);
 
 //返回一个初始化的超级块
 Superblock init_superBolck(){
@@ -38,7 +35,7 @@ Superblock init_superBolck(){
 
 
 //在虚拟磁盘上初始化一个可用的文件系统
-void init_fs(string diskname){
+void init_fs(){
     Block blocks[block_number];
     fstream fs;
     fs.open(diskname.c_str(),ios_base::in|ios_base::out|ios_base::binary);
@@ -101,12 +98,12 @@ void init_fs(string diskname){
     }
     fs.close();
     //创建必要的文件
-    init_dir(diskname);
+    init_dir();
 
 }
 
 //判断一个磁盘上是否已有一个文件系统
-bool gooddisk(string diskname){
+bool gooddisk(){
     //通过超级块上的标记判断是否有一个文件系统
     fstream fs;
     fs.open(diskname.c_str(),ios_base::in|ios_base::binary);
@@ -115,12 +112,13 @@ bool gooddisk(string diskname){
         return false;
     }else{
         //超级块是第1块,第0块为导引块,MBR保留
-        fs.seekg(sizeof(Block),ios_base::beg);//指向第1块
-        Superblock *spb=new Superblock;
-        fs.read((char *)spb,sizeof(Superblock));
-        fs.close();
+        // fs.seekg(sizeof(Block),ios_base::beg);//指向第1块
+        // Superblock *spb=new Superblock;
+        // fs.read((char *)spb,sizeof(Superblock));
+        // fs.close();
+        Superblock spb=getSuperBlock();
         bool result;
-        if(spb->magicnumber==maggci_number){
+        if(spb.magicnumber==maggci_number){
             result=true;
         }else{
             result=false;
@@ -131,7 +129,8 @@ bool gooddisk(string diskname){
 
 
 //返回一个可用的空闲块,如果没有空闲块则返回0
-int getaFreeBlockAddress(Superblock spb){
+int getaFreeBlockAddress(){
+    Superblock spb=getSuperBlock();
     if(spb.blocks.free>1)
     {
         spb.blocks.free--;
@@ -162,7 +161,7 @@ int getaFreeBlockAddress(Superblock spb){
             for(int i=0;i<100;i++){
                 spb.blocks.blocks[i]=a_lnode.blocks[i];
             }
-            int freeblock=getaFreeBlockAddress(spb);
+            int freeblock=getaFreeBlockAddress();
             //将spb写回
             fs.seekp(sizeof(Block),ios_base::beg);
             fs.write((char* )&spb,sizeof(spb));
@@ -174,34 +173,30 @@ int getaFreeBlockAddress(Superblock spb){
     }
 }
 
-void init_dir(string diskname){
+void init_dir(){
     //创建根文件夹,/root,/home,/etc/users
-    Superblock spb=getSuperBlock();
 
-    //根目录的inode
+    //根目录的inode,只有根目录特殊需要手动创建
     Inode an_inode;
     an_inode.inode_id=0;
     an_inode.user_id=0;//root用户id为0;
     an_inode.group_id=0;//
     strcpy(an_inode.permissions,"drwxr-xr-x");
-    cout<<an_inode.permissions<<endl;
     an_inode.mtime=time(0);
     an_inode.filesize=2*sizeof(Directory);//初始只有. 和..
     an_inode.blocknum=1;
-    an_inode.blockaddress[0]=getaFreeBlockAddress(spb);
-    an_inode.links=0;
+    an_inode.blockaddress[0]=getaFreeBlockAddress();
+    an_inode.links=1;
 
     Directory d1,d2;
     d1.inode_id=d2.inode_id=0;//根目录的上级和当前都是自身
     strcpy(d1.name,".");
     strcpy(d2.name,"..");
 
-    fstream fs;
-    fs.open(diskname.c_str(),ios_base::in|ios_base::binary);
+    writeInode(an_inode);
 
-    //写回inode
-    fs.seekp(2*sizeof(Block),ios_base::beg);
-    fs.write((char *)&an_inode,sizeof(an_inode));
+    fstream fs;
+    fs.open(diskname.c_str(),ios_base::in|ios_base::out|ios_base::binary);
 
     //写入文件夹
     fs.seekp(an_inode.blockaddress[0]*sizeof(Block),ios_base::beg);
@@ -212,29 +207,48 @@ void init_dir(string diskname){
     mkdir("/root","drwxr-xr-w",0,0);
     mkdir("/home","drwxr-xr-w",0,0);
     mkdir("/etc","drwxr-xr-w",0,0);
+
+
+    //创建passwd文件保存用户的账号信息
+    //TODO
 }
 
 //新建一个文件夹
 int mkdir(string path,string permission,int userid ,int groupid)
 {
-
-    //先得到之间的目录的inode的id
-    //将之前的inode的文件加入一个新的内容
     Superblock spb=getSuperBlock();
     Inode parent_node,new_node;
 
+
+    //1得到上一级目录的inode节点
     string parent_path=get_parentPath(path);
+    parent_node=getInode(parent_path);
+    // cout<<parent_node.permissions<<endl;
+    //2新添加一个inode的节点
+    strcpy(new_node.filename,getChildName(path).c_str());
+    new_node.blockaddress[0]=getaFreeBlockAddress();
+    strcpy(new_node.permissions,permission.c_str());
+    new_node.user_id=userid;
+    new_node.group_id=groupid;
+    new_node.filesize=2*sizeof(Directory);
+    new_node.mtime=time(0);
+    new_node.blocknum=1;
+    int new_node_id=addInode(new_node);
+
+    //3在parent_node文件内容中新添加一个目录项
+    addChild2Dir(parent_node,getChildName(path),new_node_id);
+
+
+    //4将初始的文件内容写入inode对应的Block
     // parent_node=getInode(parent_path);
 
-    cout<<parent_path<<endl;
-    parent_node=getInode(parent_path);
     // addFileInInode()
 
     return 0;
 
 }
 //inode代表一个目录的inode,从中找到相应的文件(目录或者文件)所对应的inode的id
-//如果没有找到则返回一个比最大的inode的编号还要大的数字
+//如果没有找到则返回-1
 int getInodeidFromDir(Inode inode,string filename){
     Superblock spb=getSuperBlock();
     fstream fs;
@@ -254,7 +268,7 @@ int getInodeidFromDir(Inode inode,string filename){
                 return temp.inode_id;
             }
             if(count>=dirs){
-                return spb.inode_number+1; //已经找完了还是没找到
+                return -1; //已经找完了还是没找到
             }
         }
     }
@@ -276,7 +290,7 @@ int getInodeidFromDir(Inode inode,string filename){
                 return temp.inode_id;
             }
             if(count>=dirs){
-                return spb.inode_number+1; //已经找完了还是没找到
+                return -1; //已经找完了还是没找到
             }
         }
     }
@@ -304,13 +318,11 @@ int getInodeidFromDir(Inode inode,string filename){
                     return temp.inode_id;
                 }
                 if(count>=dirs){
-                    return spb.inode_number+1; //已经找完了还是没找到
+                    return -1; //已经找完了还是没找到
                 }
             }
         }
     }
-
-
     return 0;
 }
 
@@ -324,7 +336,7 @@ Inode getInode(string path){
     int result;//目标inode的编号
     string target="";
     if(path=="/"){
-        result=spb.inode_number;
+        result=spb.root_inode;
     }else{
         unsigned int i,j;i=j=1;
         Inode Parent=getInode("/");//从根节点开始
