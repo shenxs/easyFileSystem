@@ -13,7 +13,7 @@ using namespace std;
 
 
 
-//===========================函数的申明
+//===========================函数的申明==========================
 Inode readInode(int index);
 int writeInode(Inode an_inode);
 int addInode(Inode inode);
@@ -22,12 +22,12 @@ int writeSuperBlock(Superblock spb);
 int addChild2Dir(Inode parent_node,string childname,int inode_id);
 int getaFreeBlockAddress();
 void writeDir(int pos,Directory dir);
-//=========================================================
+//===============================================================
 
 
 
 
-//===========================函数实现
+//===========================函数实现============================
 
 //inode的编号=====>对应的inode
 Inode readInode(int index){
@@ -52,7 +52,7 @@ int writeInode(Inode an_inode){
 Superblock getSuperBlock(){
     Superblock spb;
     fstream fs;
-    fs.open(diskname.c_str(),ios_base::in|ios_base::binary);
+    fs.open(diskname.c_str(),ios_base::in|ios_base::out|ios_base::binary);
     fs.seekg(sizeof(Block),ios_base::beg);
     fs.read((char *)&spb,sizeof(Superblock));
     fs.close();
@@ -60,7 +60,7 @@ Superblock getSuperBlock(){
 }
 
 int writeSuperBlock(Superblock spb){
-    fs.open(diskname.c_str(),ios_base::out|ios_base::binary);
+    fs.open(diskname.c_str(),ios_base::in|ios_base::out|ios_base::binary);
     fs.seekp(sizeof(Block),ios_base::beg);
     fs.write((char*)&spb,sizeof(spb));
     fs.close();
@@ -78,7 +78,6 @@ int addInode(Inode inode){
         //说明已经不能添加新的inode了
     }
     inode.inode_id=current;
-
     spb.inode_usered++;
     writeSuperBlock(spb);
     writeInode(inode);
@@ -89,12 +88,10 @@ int addInode(Inode inode){
 //返回新的文件项在磁盘上的位置(第多少个字节)
 //返回-1说明添加失败
 int addChild2Dir(Inode parent_node,string childname,int inode_id){
-
     Directory child;
     child.inode_id=inode_id;
     strcpy(child.name,childname.c_str());
     //找到parent对应文件的末尾
-
     short int block_index=0;//文件末尾所在的块号
     int pianyi=0;//文件末尾对应的块号的偏移量
     if(parent_node.blocknum<=3){
@@ -135,7 +132,7 @@ int addChild2Dir(Inode parent_node,string childname,int inode_id){
             block_index=parent_node.blockaddress[parent_node.blocknum-1];
             pianyi=parent_node.filesize%sizeof(Block);
         }
-    }else if(parent_node.blocknum>=5&&parent_node.blocknum<(4+(sizeof(Block)/sizeof(short int)))){
+    }else if(parent_node.blocknum>=5&&parent_node.blocknum<(4+addressNumber)){
         //一级间接地址
         if(parent_node.filesize%sizeof(Block)==0){
             //已经满了,需要一个新的块
@@ -227,6 +224,9 @@ int addChild2Dir(Inode parent_node,string childname,int inode_id){
             pianyi=parent_node.filesize%sizeof(Block);
         }
 
+    }else{
+        cout<<"未知错误"<<endl;
+        return -1;
     }
     fs.close();
     parent_node.filesize+=sizeof(child);

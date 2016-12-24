@@ -15,9 +15,9 @@ int mkdir(string path,string permission,int userid ,int groupid);
 Inode getInode(string path);
 void init_dir();//创建初始文件夹
 void init_fs();
+int touch(string path,string permission,int userid,int groupid);
 
-
-
+int saveTopasswd(User user);
 //================函数实现=======================================
 //返回一个初始化的超级块
 Superblock init_superBolck(){
@@ -132,7 +132,7 @@ bool gooddisk(){
 
 //返回一个可用的空闲块,如果没有空闲块则返回0
 void init_dir(){
-    //创建根文件夹,/root,/home,/etc/users
+    //创建根文件夹,/root,/home,/etc/passwd
 
     //根目录的inode,只有根目录特殊需要手动创建
     Inode an_inode;
@@ -153,7 +153,6 @@ void init_dir(){
 
     writeInode(an_inode);
 
-    fstream fs;
     fs.open(diskname.c_str(),ios_base::in|ios_base::out|ios_base::binary);
 
     //写入文件夹
@@ -166,23 +165,39 @@ void init_dir(){
     mkdir("/home","drwxr-xr-w",0,0);
     mkdir("/etc","drwxr-xr-w",0,0);
 
-
     //创建passwd文件保存用户的账号信息
     //TODO
+    touch("/etc/passwd","frwxrwx---",0,0);//只有root以及管理员用户组才可以查看,不保存字符串,直接用二进制保存用户信息,方便使用
+
+    User root;
+    strcpy(root.name,"root");
+    strcpy(root.password,"12345");
+    root.user_id=0;
+    root.group_id=0;
+    User richard;
+    strcpy(richard.name,"Richard");
+    strcpy(richard.password,"12345");
+    richard.user_id=1;
+    richard.group_id=1;
+    saveTopasswd(root);//作为一个特殊的函数
+    saveTopasswd(richard);
 }
+
+
+
+
 
 //新建一个文件夹
 int mkdir(string path,string permission,int userid ,int groupid)
 {
-    Superblock spb=getSuperBlock();
     Inode parent_node,new_node;
-
 
     //1得到上一级目录的inode节点
     string parent_path=get_parentPath(path);
     parent_node=getInode(parent_path);
     // cout<<parent_node.permissions<<endl;
     //2新添加一个inode的节点
+
     strcpy(new_node.filename,getChildName(path).c_str());
     new_node.blockaddress[0]=getaFreeBlockAddress();
     strcpy(new_node.permissions,permission.c_str());
@@ -196,19 +211,21 @@ int mkdir(string path,string permission,int userid ,int groupid)
     //3在parent_node文件内容中新添加一个目录项
     addChild2Dir(parent_node,getChildName(path),new_node_id);
 
-
     //4将初始的文件内容写入inode对应的Block
-    // parent_node=getInode(parent_path);
+    Directory dir1,dir2;
+    strcpy(dir1.name,".");
+    strcpy(dir2.name,"..");
+    dir1.inode_id=new_node_id;
+    dir2.inode_id=parent_node.inode_id;
 
-    // addFileInInode()
+    writeDir(new_node.blockaddress[0]*sizeof(Block),dir1);
+    writeDir(new_node.blockaddress[0]*sizeof(Block)+sizeof(dir1),dir2);
 
     return 0;
-
 }
 //inode代表一个目录的inode,从中找到相应的文件(目录或者文件)所对应的inode的id
 //如果没有找到则返回-1
 int getInodeidFromDir(Inode inode,string filename){
-    Superblock spb=getSuperBlock();
     fstream fs;
     fs.open(diskname.c_str(),ios_base::in|ios_base::binary);
     unsigned int count=0;//查看是否已经查找了所有的目录项了
@@ -319,4 +336,58 @@ Inode getInode(string path){
         }
     }
     return readInode(result);
+}
+
+//创建一个路径为path的文件,文件内容为空
+int touch(string path,string permission,int userid,int groupid){
+
+    string parent_path=get_parentPath(path);
+    string childname=getChildName(path);
+    Inode parent_node,child_node;
+    parent_node=getInode(parent_path);
+
+    strcpy(child_node.filename,childname.c_str());
+    child_node.blocknum=1;
+    child_node.filesize=0;
+    child_node.mtime=time(0);
+    strcpy(child_node.permissions,permission.c_str());
+    child_node.blockaddress[0]=getaFreeBlockAddress();
+    child_node.links=1;
+    child_node.user_id=userid;
+    child_node.group_id=groupid;
+
+    int child_node_id=addInode(child_node);
+    Directory file;
+    strcpy(file.name,childname.c_str());
+    file.inode_id=child_node_id;
+    addChild2Dir(parent_node,childname,child_node_id);
+
+    return 0;
+}
+
+int saveTopasswd(User user){
+    string path="/etc/passwd";
+    Inode node=getInode(path);
+    int pos=node.blockaddress[0];//暂时不超过一个块TODO
+    fs.open(diskname.c_str(),ios_base::in|ios_base::out|ios_base::binary);
+    fs.seekg(pos*sizeof(Block),ios_base::beg);
+    if(node.filesize==0){//原本,没有用户
+        fs.write((char *)&user,sizeof(user));
+        return 0;
+    }else{//遍历,如果已有则更新,没有则在末尾添加
+        unsigned int i=0;
+        for(;i<node.filesize/sizeof(User);i++){
+            User temp;
+            fs.read((char*)&temp,sizeof(temp));
+            if(temp.name==user.name){
+                fs.seekp(-sizeof(User),ios_base::cur);
+                fs.write((char *)&user,sizeof(user));
+                break;
+            }
+        }
+        if(i==node.filesize/sizeof(User)){
+            fs.write((char *)&user,sizeof(User));
+        }
+        return i;
+    }
 }
