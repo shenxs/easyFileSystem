@@ -2,9 +2,9 @@
 #include<string>
 #include<fstream>
 #include"utile.cpp"
+#include"config.h"
 using namespace std;
 
-string diskname="virtualdisk";
 
 
 //用于初始化文件系统
@@ -29,7 +29,7 @@ void init(){
         }else{
             cout<<"未发现文件系统,准备重新初始化"<<endl;
             init_fs(diskname);
-            loadfs(diskname);
+            // loadfs(diskname);
         }
     }
 

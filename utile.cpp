@@ -4,9 +4,11 @@
 #include<string.h>
 #include"struct.cpp"
 #include"config.h"
+#include"string_func.cpp"
+#include"lowio.cpp"
 using namespace std;
 
-string disk="virtualdisk";
+// string disk="virtualdisk";
 string get_parentPath(string path);
 int getaFreeBlockAddress(Superblock spb);
 int mkdir(string path,string permission,int userid ,int groupid);
@@ -33,10 +35,7 @@ Superblock init_superBolck(){
     return spb;
 }
 
-//装载文件系统
-void loadfs(string diskname){
 
-}
 
 //在虚拟磁盘上初始化一个可用的文件系统
 void init_fs(string diskname){
@@ -130,17 +129,6 @@ bool gooddisk(string diskname){
     }
 }
 
-Superblock getSuperBlock(string diskname){
-    Superblock spb;
-    fstream fs;
-    fs.open(diskname.c_str(),ios_base::in|ios_base::binary);
-    fs.seekg(sizeof(Block),ios_base::beg);
-    fs.read((char *)&spb,sizeof(Superblock));
-
-    fs.close();
-    return spb;
-}
-
 
 //返回一个可用的空闲块,如果没有空闲块则返回0
 int getaFreeBlockAddress(Superblock spb){
@@ -188,7 +176,7 @@ int getaFreeBlockAddress(Superblock spb){
 
 void init_dir(string diskname){
     //创建根文件夹,/root,/home,/etc/users
-    Superblock spb=getSuperBlock(diskname);
+    Superblock spb=getSuperBlock();
 
     //根目录的inode
     Inode an_inode;
@@ -232,59 +220,25 @@ int mkdir(string path,string permission,int userid ,int groupid)
 
     //先得到之间的目录的inode的id
     //将之前的inode的文件加入一个新的内容
-    Superblock spb=getSuperBlock(disk);
+    Superblock spb=getSuperBlock();
     Inode parent_node,new_node;
 
     string parent_path=get_parentPath(path);
     // parent_node=getInode(parent_path);
 
     cout<<parent_path<<endl;
-
     parent_node=getInode(parent_path);
+    // addFileInInode()
 
     return 0;
 
 }
-
-//得到一个目录的父文件夹的路径
-//  /  返回 /
-//  /etc ===> /
-//  /etc/passwd ===>  /etc
-string get_parentPath(string path){
-    if(path=="/"){
-        return "/";
-    }else{
-        char seperator='/';
-        int l=path.length();
-        int i=l;
-        while(path[i]!=seperator){
-            i--;
-        }
-        if (i==0){
-            return path.substr(0,1);
-        }else{
-            return path.substr(0,i);
-        }
-    }
-}
-
-Inode readInode(int index){
-    Inode temp;
-    fstream fs;
-    fs.open(disk.c_str(),ios_base::in|ios_base::binary);
-    fs.seekg(2*sizeof(Block)+index*sizeof(Inode),ios_base::beg);
-    fs.read((char *)&temp,sizeof(temp));
-    fs.close();
-    return temp;
-}
-
-
 //inode代表一个目录的inode,从中找到相应的文件(目录或者文件)所对应的inode的id
 //如果没有找到则返回一个比最大的inode的编号还要大的数字
 int getInodeidFromDir(Inode inode,string filename){
-    Superblock spb=getSuperBlock(disk);
+    Superblock spb=getSuperBlock();
     fstream fs;
-    fs.open(disk.c_str(),ios_base::in|ios_base::binary);
+    fs.open(diskname.c_str(),ios_base::in|ios_base::binary);
     unsigned int count=0;//查看是否已经查找了所有的目录项了
     unsigned int dirs=inode.filesize/sizeof(Directory);//最多有多少的目录项
     int i=0;
@@ -364,9 +318,9 @@ int getInodeidFromDir(Inode inode,string filename){
 //路径对应inode的节点,绝对路径
 //没找到则返回一个文件大小为-1的inode
 Inode getInode(string path){
-    Superblock spb=getSuperBlock(disk);
+    Superblock spb=getSuperBlock();
     fstream fs;
-    fs.open(disk.c_str(),ios_base::in|ios_base::binary);
+    fs.open(diskname.c_str(),ios_base::in|ios_base::binary);
     int result;//目标inode的编号
     string target="";
     if(path=="/"){

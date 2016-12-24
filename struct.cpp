@@ -1,3 +1,6 @@
+#ifndef STRUCT_CPP_
+#define STRUCT_CPP_
+
 #include<time.h>
 #include<stack>
 
@@ -58,3 +61,5 @@ struct Group{
     int id;
 
 };
+
+#endif
