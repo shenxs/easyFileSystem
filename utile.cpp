@@ -8,13 +8,17 @@
 #include"lowio.cpp"
 using namespace std;
 
-int getaFreeBlockAddress();
+
+
+//================函数申明=======================================
 int mkdir(string path,string permission,int userid ,int groupid);
 Inode getInode(string path);
-//创建初始文件夹
-void init_dir();
-//读取并返回当前的superblock;
+void init_dir();//创建初始文件夹
+void init_fs();
 
+
+
+//================函数实现=======================================
 //返回一个初始化的超级块
 Superblock init_superBolck(){
     Superblock spb;
@@ -31,8 +35,6 @@ Superblock init_superBolck(){
     }
     return spb;
 }
-
-
 
 //在虚拟磁盘上初始化一个可用的文件系统
 void init_fs(){
@@ -129,50 +131,6 @@ bool gooddisk(){
 
 
 //返回一个可用的空闲块,如果没有空闲块则返回0
-int getaFreeBlockAddress(){
-    Superblock spb=getSuperBlock();
-    if(spb.blocks.free>1)
-    {
-        spb.blocks.free--;
-        return spb.blocks.blocks[spb.blocks.free];
-    }else if(spb.blocks.free==1){
-        if(spb.blocks.next_adress==0){//已经是最后一组了
-            return 0;
-        }else{//当前的组中所有的块都已经使用了
-            //将现在的lNode写回磁盘
-            Lnode a_lnode;
-            a_lnode.free=spb.blocks.free;
-            a_lnode.next_adress=spb.blocks.next_adress;
-            for(int i=0;i<100;i++){
-                a_lnode.blocks[i]=spb.blocks.blocks[i];
-            }
-            //将下一组的自由块的Lnode装入spb
-
-            fstream fs;
-            fs.open("virtualdisk",ios_base::in|ios_base::binary);
-            fs.seekp(sizeof(Block)*(spb.blocks.next_adress-100),ios_base::beg);
-            fs.write((char *)&a_lnode,sizeof(a_lnode));
-            //将下一组的自由块的Lnode装入spb
-            fs.seekp(sizeof(Block)*spb.blocks.next_adress,ios_base::beg);
-            fs.read((char *) &a_lnode,sizeof(a_lnode));
-
-            spb.blocks.free=a_lnode.free;
-            spb.blocks.next_adress=a_lnode.next_adress;
-            for(int i=0;i<100;i++){
-                spb.blocks.blocks[i]=a_lnode.blocks[i];
-            }
-            int freeblock=getaFreeBlockAddress();
-            //将spb写回
-            fs.seekp(sizeof(Block),ios_base::beg);
-            fs.write((char* )&spb,sizeof(spb));
-            return freeblock;
-        }
-    }else{
-        cout<<"出现未知错误"<<endl;
-        return 0;
-    }
-}
-
 void init_dir(){
     //创建根文件夹,/root,/home,/etc/users
 

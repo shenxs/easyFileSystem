@@ -27,7 +27,7 @@ struct Block{
     char content[512];
 };
 
-//目录
+//目录让一个块可以放下整数个文件项
 struct Directory{
     char name[14];  //文件名
     short int inode_id; //inode号
