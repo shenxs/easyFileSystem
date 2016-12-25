@@ -2,7 +2,6 @@
 #define STRUCT_CPP_
 
 #include<time.h>
-#include<stack>
 
 
 //link node

@@ -5,6 +5,7 @@
 #include<string>
 #include<string.h>
 #include"struct.cpp"
+// #include"help.cpp"
 #include"config.h"
 using namespace std;
 //底层的磁盘的读写,读取写入spb,inode,添加一个目录项
@@ -14,6 +15,7 @@ using namespace std;
 
 
 //===========================函数的申明==========================
+void opendisk();
 Inode readInode(int index);
 int writeInode(Inode an_inode);
 int addInode(Inode inode);
@@ -29,13 +31,32 @@ void writeDir(int pos,Directory dir);
 
 //===========================函数实现============================
 
+void opendisk(){
+    if(!fs.is_open()){
+    fs.open(diskname.c_str(),ios_base::in|ios_base::out|ios_base::binary);
+    }else{
+        cout<<"磁盘已经打开"<<endl;
+    }
+}
+void closedisk()
+{
+    if(fs.is_open())
+    {
+    fs.close();
+    }else{
+        cout<<"请先打开磁盘"<<endl;
+    }
+}
+
+
 //inode的编号=====>对应的inode
+//编号从0开始对应数组的下标,id就是下标
 Inode readInode(int index){
     Inode temp;
-    fs.open(diskname.c_str(),ios_base::in|ios_base::binary);
+    opendisk();
     fs.seekg(2*sizeof(Block)+index*sizeof(Inode),ios_base::beg);
     fs.read((char *)&temp,sizeof(temp));
-    fs.close();
+    closedisk();
     return temp;
 }
 
@@ -48,22 +69,20 @@ int writeInode(Inode an_inode){
     return 0;
 }
 
-
 Superblock getSuperBlock(){
     Superblock spb;
-    fstream fs;
-    fs.open(diskname.c_str(),ios_base::in|ios_base::out|ios_base::binary);
+    opendisk();
     fs.seekg(sizeof(Block),ios_base::beg);
     fs.read((char *)&spb,sizeof(Superblock));
-    fs.close();
+    closedisk();
     return spb;
 }
 
 int writeSuperBlock(Superblock spb){
-    fs.open(diskname.c_str(),ios_base::in|ios_base::out|ios_base::binary);
+    opendisk();
     fs.seekp(sizeof(Block),ios_base::beg);
     fs.write((char*)&spb,sizeof(spb));
-    fs.close();
+    closedisk();
     return 0;
 }
 
@@ -88,6 +107,7 @@ int addInode(Inode inode){
 //返回新的文件项在磁盘上的位置(第多少个字节)
 //返回-1说明添加失败
 int addChild2Dir(Inode parent_node,string childname,int inode_id){
+    // showInode(parent_node);
     Directory child;
     child.inode_id=inode_id;
     strcpy(child.name,childname.c_str());
@@ -97,9 +117,8 @@ int addChild2Dir(Inode parent_node,string childname,int inode_id){
     if(parent_node.blocknum<=3){
         //直接地址,如果已经满了,下一块还是直接地址
         //如果当前块放不下一个目录项了
-        block_index=parent_node.blocknum-1;
         pianyi=parent_node.filesize%sizeof(Block);
-        if((sizeof(Block)-pianyi)<sizeof(Directory)or pianyi==0){
+        if(pianyi==0){
             //重新申请一块空闲的地址
             int new_block_address=getaFreeBlockAddress();
             parent_node.blockaddress[parent_node.blocknum]=new_block_address;
@@ -229,6 +248,7 @@ int addChild2Dir(Inode parent_node,string childname,int inode_id){
         return -1;
     }
     fs.close();
+
     parent_node.filesize+=sizeof(child);
     writeInode(parent_node);
     writeDir(block_index*sizeof(Block)+pianyi,child);
@@ -240,11 +260,14 @@ int getaFreeBlockAddress(){
     if(spb.blocks.free>1)
     {
         spb.blocks.free--;
+        writeSuperBlock(spb);
         return spb.blocks.blocks[spb.blocks.free];
     }else if(spb.blocks.free==1){
         if(spb.blocks.next_adress==0){//已经是最后一组了
-            return 0;
-        }else{//当前的组中所有的块都已经使用了
+            cout<<"磁盘耗尽,没有空余块了"<<endl;
+            return -1;
+        }else{
+            //当前的组中所有的块都已经使用了
             //将现在的lNode写回磁盘
             Lnode a_lnode;
             a_lnode.free=spb.blocks.free;
@@ -252,30 +275,27 @@ int getaFreeBlockAddress(){
             for(int i=0;i<100;i++){
                 a_lnode.blocks[i]=spb.blocks.blocks[i];
             }
-            //将下一组的自由块的Lnode装入spb
-
-            fstream fs;
-            fs.open("virtualdisk",ios_base::in|ios_base::binary);
+            fs.open(diskname.c_str(),ios_base::in|ios_base::out|ios_base::binary);
             fs.seekp(sizeof(Block)*(spb.blocks.next_adress-100),ios_base::beg);
             fs.write((char *)&a_lnode,sizeof(a_lnode));
             //将下一组的自由块的Lnode装入spb
             fs.seekp(sizeof(Block)*spb.blocks.next_adress,ios_base::beg);
             fs.read((char *) &a_lnode,sizeof(a_lnode));
 
+            fs.close();
             spb.blocks.free=a_lnode.free;
             spb.blocks.next_adress=a_lnode.next_adress;
             for(int i=0;i<100;i++){
                 spb.blocks.blocks[i]=a_lnode.blocks[i];
             }
+            writeSuperBlock(spb);
             int freeblock=getaFreeBlockAddress();
             //将spb写回
-            fs.seekp(sizeof(Block),ios_base::beg);
-            fs.write((char* )&spb,sizeof(spb));
             return freeblock;
         }
     }else{
         cout<<"出现未知错误"<<endl;
-        return 0;
+        return -1;
     }
 }
 

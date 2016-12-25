@@ -3,17 +3,16 @@
 #include<fstream>
 #include"utile.cpp"
 #include"config.h"
+#include"lowio.cpp"
 using namespace std;
-
 
 
 //用于初始化文件系统
 void init(){
     cout<<"准备初始化文件系统"<<endl;
-    fstream fs;
 
     //打开虚拟磁盘
-    fs.open(diskname.c_str(),ios_base::in|ios_base::out|ios_base::binary);
+    opendisk();
 
     if(!fs.is_open()){
         cout<<"虚拟磁盘打开失败"<<endl;
@@ -21,6 +20,7 @@ void init(){
     }else{
         cout<<"成功打开虚拟磁盘"<<endl;
 
+        closedisk();
         init_fs();
 
         if(gooddisk()){

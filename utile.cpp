@@ -1,3 +1,6 @@
+#ifndef UTILE_CPP_
+#define UTILE_CPP_
+
 #include<iostream>
 #include<fstream>
 #include<string>
@@ -6,6 +9,7 @@
 #include"config.h"
 #include"string_func.cpp"
 #include"lowio.cpp"
+#include"help.cpp"
 using namespace std;
 
 
@@ -13,11 +17,12 @@ using namespace std;
 //================函数申明=======================================
 int mkdir(string path,string permission,int userid ,int groupid);
 Inode getInode(string path);
+Inode getInode(Inode parent,string path);
 void init_dir();//创建初始文件夹
 void init_fs();
 int touch(string path,string permission,int userid,int groupid);
-
 int saveTopasswd(User user);
+bool leagleUser(User user);
 //================函数实现=======================================
 //返回一个初始化的超级块
 Superblock init_superBolck(){
@@ -27,11 +32,11 @@ Superblock init_superBolck(){
     spb.inode_number=(data_start-2)*block_size/sizeof(Inode);
     spb.root_inode=0;//根文件夹的inode的下标
     spb.inode_usered=1;//已经使用了的inode的数量,根节点已经使用了一个
-    spb.blocks.free=100;
-    spb.blocks.next_adress=148;
+    spb.blocks.free=stack_size;
+    spb.blocks.next_adress=stack_size+data_start;
 
-    for(int i=0;i<100;i++){
-        spb.blocks.blocks[i]=48+i;
+    for(int i=0;i<spb.blocks.free;i++){
+        spb.blocks.blocks[i]=data_start+i;
     }
     return spb;
 }
@@ -39,8 +44,7 @@ Superblock init_superBolck(){
 //在虚拟磁盘上初始化一个可用的文件系统
 void init_fs(){
     Block blocks[block_number];
-    fstream fs;
-    fs.open(diskname.c_str(),ios_base::in|ios_base::out|ios_base::binary);
+    opendisk();
     fs.write((char *)&blocks,sizeof(blocks));
 
     //跳过MBR
@@ -98,35 +102,27 @@ void init_fs(){
             a_lnode.blocks[j]=data_start+i*100+j;
         }
     }
-    fs.close();
+    closedisk();
     //创建必要的文件
     init_dir();
-
 }
 
 //判断一个磁盘上是否已有一个文件系统
 bool gooddisk(){
     //通过超级块上的标记判断是否有一个文件系统
-    fstream fs;
-    fs.open(diskname.c_str(),ios_base::in|ios_base::binary);
-    if(!fs.is_open()){
-        cout<<"文件打开失败"<<endl;
-        return false;
+    //超级块是第1块,第0块为导引块,MBR保留
+    // fs.seekg(sizeof(Block),ios_base::beg);//指向第1块
+    // Superblock *spb=new Superblock;
+    // fs.read((char *)spb,sizeof(Superblock));
+    // fs.close();
+    Superblock spb=getSuperBlock();
+    bool result;
+    if(spb.magicnumber==maggci_number){
+        result=true;
     }else{
-        //超级块是第1块,第0块为导引块,MBR保留
-        // fs.seekg(sizeof(Block),ios_base::beg);//指向第1块
-        // Superblock *spb=new Superblock;
-        // fs.read((char *)spb,sizeof(Superblock));
-        // fs.close();
-        Superblock spb=getSuperBlock();
-        bool result;
-        if(spb.magicnumber==maggci_number){
-            result=true;
-        }else{
-            result=false;
-        }
-        return result;
+        result=false;
     }
+    return result;
 }
 
 
@@ -136,6 +132,7 @@ void init_dir(){
 
     //根目录的inode,只有根目录特殊需要手动创建
     Inode an_inode;
+    strcpy(an_inode.filename,"/");
     an_inode.inode_id=0;
     an_inode.user_id=0;//root用户id为0;
     an_inode.group_id=0;//
@@ -153,20 +150,22 @@ void init_dir(){
 
     writeInode(an_inode);
 
-    fs.open(diskname.c_str(),ios_base::in|ios_base::out|ios_base::binary);
-
+    opendisk();
     //写入文件夹
     fs.seekp(an_inode.blockaddress[0]*sizeof(Block),ios_base::beg);
     fs.write((char*) &d1,sizeof(d1));
     fs.write((char*) &d2,sizeof(d2));
+    closedisk();
 
     //前缀,目录名,permission,userid ,groupid;
     mkdir("/root","drwxr-xr-w",0,0);
     mkdir("/home","drwxr-xr-w",0,0);
     mkdir("/etc","drwxr-xr-w",0,0);
 
-    //创建passwd文件保存用户的账号信息
-    //TODO
+    mkdir("/home/richard","drwxrwrx---",1,1);
+    mkdir("/home/richard/playground","drwxrwrx---",1,1);
+    // //创建passwd文件保存用户的账号信息
+
     touch("/etc/passwd","frwxrwx---",0,0);//只有root以及管理员用户组才可以查看,不保存字符串,直接用二进制保存用户信息,方便使用
 
     User root;
@@ -194,11 +193,12 @@ int mkdir(string path,string permission,int userid ,int groupid)
 
     //1得到上一级目录的inode节点
     string parent_path=get_parentPath(path);
-    parent_node=getInode(parent_path);
+    parent_node=getInode(readInode(0),parent_path.substr(1,parent_path.length()));
     // cout<<parent_node.permissions<<endl;
     //2新添加一个inode的节点
 
     strcpy(new_node.filename,getChildName(path).c_str());
+    // cout<<getChildName(path)<<endl;
     new_node.blockaddress[0]=getaFreeBlockAddress();
     strcpy(new_node.permissions,permission.c_str());
     new_node.user_id=userid;
@@ -206,6 +206,7 @@ int mkdir(string path,string permission,int userid ,int groupid)
     new_node.filesize=2*sizeof(Directory);
     new_node.mtime=time(0);
     new_node.blocknum=1;
+    new_node.links=1;
     int new_node_id=addInode(new_node);
 
     //3在parent_node文件内容中新添加一个目录项
@@ -218,6 +219,7 @@ int mkdir(string path,string permission,int userid ,int groupid)
     dir1.inode_id=new_node_id;
     dir2.inode_id=parent_node.inode_id;
 
+    //写入初始文件夹
     writeDir(new_node.blockaddress[0]*sizeof(Block),dir1);
     writeDir(new_node.blockaddress[0]*sizeof(Block)+sizeof(dir1),dir2);
 
@@ -226,15 +228,14 @@ int mkdir(string path,string permission,int userid ,int groupid)
 //inode代表一个目录的inode,从中找到相应的文件(目录或者文件)所对应的inode的id
 //如果没有找到则返回-1
 int getInodeidFromDir(Inode inode,string filename){
-    fstream fs;
-    fs.open(diskname.c_str(),ios_base::in|ios_base::binary);
+    opendisk();
     unsigned int count=0;//查看是否已经查找了所有的目录项了
     unsigned int dirs=inode.filesize/sizeof(Directory);//最多有多少的目录项
     int i=0;
     for(i=0;i<4;i++){
         int address=inode.blockaddress[i];
         fs.seekg(address*sizeof(Block),ios_base::beg);
-        while(count<=(sizeof(Block)/sizeof(Directory))){
+        for(unsigned int j=0;j<(sizeof(Block)/sizeof(Directory));j++){
             Directory temp;
             fs.read((char*)&temp,sizeof(temp));
             count++;
@@ -242,7 +243,8 @@ int getInodeidFromDir(Inode inode,string filename){
             if(name==filename){
                 return temp.inode_id;
             }
-            if(count>=dirs){
+            if(count>dirs){
+                cout<<"没有在"<<inode.filename<<"找到此子文件"<<filename<<endl;
                 return -1; //已经找完了还是没找到
             }
         }
@@ -301,44 +303,41 @@ int getInodeidFromDir(Inode inode,string filename){
     return 0;
 }
 
+//递归式的有路径找到对应的inode
+
+Inode getInode(Inode parent,string path){
+    // cout<<path<<endl;
+    if(path==""){
+        //已近找完了
+        return parent;
+    }else if(path.find_first_of("/")==string::npos){
+        //最后一项了
+        int nodeId=getInodeidFromDir(parent,path);
+        if(nodeId==-1){
+            return parent;
+        }
+        Inode node=readInode(nodeId);
+        return node;
+    }else{
+        string childname=path.substr(0,path.find_first_of("/"));
+        int nodeId=getInodeidFromDir(parent,childname);
+        if(nodeId==-1){
+            return parent;
+        }
+        parent=readInode(nodeId);
+        string new_path=path.substr(path.find_first_of("/")+1,path.length());
+        return getInode(parent,new_path);
+    }
+
+}
 
 //路径对应inode的节点,绝对路径
-//没找到则返回一个文件大小为-1的inode
 Inode getInode(string path){
-    Superblock spb=getSuperBlock();
-    fstream fs;
-    fs.open(diskname.c_str(),ios_base::in|ios_base::binary);
-    int result;//目标inode的编号
-    string target="";
-    if(path=="/"){
-        result=spb.root_inode;
-    }else{
-        unsigned int i,j;i=j=1;
-        Inode Parent=getInode("/");//从根节点开始
-        while(j<path.length()){
-
-            for(;j<path.length();j++){
-                if(path[j]=='/')
-                    break;
-            }
-            target=path.substr(i,j);
-            result=getInodeidFromDir(Parent,target);
-            if(result>spb.inode_number){
-                Inode blank;
-                blank.filesize=-1;
-                return blank;
-            }else{
-                Parent=readInode(result);
-                j++;
-                i=j;
-            }
-
-        }
-    }
-    return readInode(result);
+    return getInode(readInode(0),path.substr(1,path.length()));
 }
 
 //创建一个路径为path的文件,文件内容为空
+//但是也分配一个块
 int touch(string path,string permission,int userid,int groupid){
 
     string parent_path=get_parentPath(path);
@@ -352,6 +351,7 @@ int touch(string path,string permission,int userid,int groupid){
     child_node.mtime=time(0);
     strcpy(child_node.permissions,permission.c_str());
     child_node.blockaddress[0]=getaFreeBlockAddress();
+    // cout<<child_node.blockaddress[0]<<endl;
     child_node.links=1;
     child_node.user_id=userid;
     child_node.group_id=groupid;
@@ -362,20 +362,27 @@ int touch(string path,string permission,int userid,int groupid){
     file.inode_id=child_node_id;
     addChild2Dir(parent_node,childname,child_node_id);
 
-    return 0;
+    return child_node_id;
 }
 
 int saveTopasswd(User user){
     string path="/etc/passwd";
     Inode node=getInode(path);
-    int pos=node.blockaddress[0];//暂时不超过一个块TODO
-    fs.open(diskname.c_str(),ios_base::in|ios_base::out|ios_base::binary);
-    fs.seekg(pos*sizeof(Block),ios_base::beg);
-    if(node.filesize==0){//原本,没有用户
+    if(node.filesize==0){
+        int pos=node.blockaddress[0];
+
+        opendisk();
+        fs.seekp(pos*sizeof(Block),ios_base::beg);
         fs.write((char *)&user,sizeof(user));
+        fs.close();
+        node.filesize=node.filesize+sizeof(User);
+        writeInode(node);
         return 0;
     }else{//遍历,如果已有则更新,没有则在末尾添加
         unsigned int i=0;
+        int pos=node.blockaddress[0];
+        opendisk();
+        fs.seekp(pos*sizeof(Block),ios_base::beg);
         for(;i<node.filesize/sizeof(User);i++){
             User temp;
             fs.read((char*)&temp,sizeof(temp));
@@ -388,6 +395,31 @@ int saveTopasswd(User user){
         if(i==node.filesize/sizeof(User)){
             fs.write((char *)&user,sizeof(User));
         }
+        closedisk();
         return i;
     }
 }
+
+bool leagleUser(User user){
+    Inode node=getInode("/etc/passwd");
+    cout<<user.name<<"请求登录"<<"密码:"<<user.password<<endl;
+    opendisk();
+    fs.seekg(node.blockaddress[0]*sizeof(Block),ios_base::beg);
+    int userNumber=node.filesize/sizeof(User);
+    cout<<"一共"<<userNumber<<"个用户"<<endl;
+    for(int i=0;i<userNumber;i++){
+        User rightUser;
+        fs.read((char *)&rightUser,sizeof(rightUser));
+        cout<<rightUser.name<<" "<<rightUser.password<<endl;
+        string name=rightUser.name;
+        string password=rightUser.password;
+        if(user.name==name && user.password==password){
+            cout<<"验证通过"<<endl;
+            closedisk();
+            return true;
+        }
+    }
+    closedisk();
+    return false;
+}
+#endif
