@@ -1,4 +1,3 @@
-
 #ifndef HELP_CPP_
 #define HELP_CPP_
 

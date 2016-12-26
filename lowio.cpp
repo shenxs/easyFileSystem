@@ -17,6 +17,7 @@ using namespace std;
 //===========================函数的申明==========================
 void opendisk();
 Inode readInode(int index);
+User  readUser(int pos);
 int writeInode(Inode an_inode);
 int addInode(Inode inode);
 Superblock getSuperBlock();
@@ -301,10 +302,19 @@ int getaFreeBlockAddress(){
 
 //将某个目录项写到pos所指的地方
 void writeDir(int pos, Directory dir){
-    fs.open(diskname.c_str(),ios_base::in|ios_base::out|ios_base::binary);
+    opendisk();
     fs.seekp(pos,ios_base::beg);
     fs.write((char *)&dir,sizeof(dir));
-    fs.close();
+    closedisk();
 }
 
+//pos是指User所在的地址
+User readUser(int pos){
+    opendisk();
+    fs.seekg(pos,ios_base::beg);
+    User temp;
+    fs.read((char *)&temp,sizeof(temp));
+    closedisk();
+    return temp;
+}
 #endif

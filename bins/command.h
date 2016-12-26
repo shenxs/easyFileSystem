@@ -14,7 +14,7 @@ typedef int (*FnPtr)(vector<string>);
 
 std::map<std::string,FnPtr> commandMap;
 User currentUser;
-string PWD;
+string PWD="/";
 
 //初始化commandMap()
 void initCommands(){

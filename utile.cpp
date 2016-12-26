@@ -13,7 +13,6 @@
 using namespace std;
 
 
-
 //================函数申明=======================================
 int mkdir(string path,string permission,int userid ,int groupid);
 Inode getInode(string path);
@@ -22,7 +21,7 @@ void init_dir();//创建初始文件夹
 void init_fs();
 int touch(string path,string permission,int userid,int groupid);
 int saveTopasswd(User user);
-bool leagleUser(User user);
+int leagleUser(User user);
 //================函数实现=======================================
 //返回一个初始化的超级块
 Superblock init_superBolck(){
@@ -174,7 +173,7 @@ void init_dir(){
     root.user_id=0;
     root.group_id=0;
     User richard;
-    strcpy(richard.name,"Richard");
+    strcpy(richard.name,"richard");
     strcpy(richard.password,"12345");
     richard.user_id=1;
     richard.group_id=1;
@@ -241,10 +240,12 @@ int getInodeidFromDir(Inode inode,string filename){
             count++;
             string name=temp.name;
             if(name==filename){
+                closedisk();
                 return temp.inode_id;
             }
             if(count>dirs){
                 cout<<"没有在"<<inode.filename<<"找到此子文件"<<filename<<endl;
+                closedisk();
                 return -1; //已经找完了还是没找到
             }
         }
@@ -264,9 +265,11 @@ int getInodeidFromDir(Inode inode,string filename){
             count++;
             string name=temp.name;
             if(name==filename){
+                closedisk();
                 return temp.inode_id;
             }
             if(count>=dirs){
+                closedisk();
                 return -1; //已经找完了还是没找到
             }
         }
@@ -292,15 +295,18 @@ int getInodeidFromDir(Inode inode,string filename){
                 count++;
                 string name=temp.name;
                 if(name==filename){
+                    closedisk();
                     return temp.inode_id;
                 }
                 if(count>=dirs){
+                    closedisk();
                     return -1; //已经找完了还是没找到
                 }
             }
         }
     }
-    return 0;
+    closedisk();
+    return -1;
 }
 
 //递归式的有路径找到对应的inode
@@ -370,7 +376,6 @@ int saveTopasswd(User user){
     Inode node=getInode(path);
     if(node.filesize==0){
         int pos=node.blockaddress[0];
-
         opendisk();
         fs.seekp(pos*sizeof(Block),ios_base::beg);
         fs.write((char *)&user,sizeof(user));
@@ -394,17 +399,22 @@ int saveTopasswd(User user){
         }
         if(i==node.filesize/sizeof(User)){
             fs.write((char *)&user,sizeof(User));
+            node.filesize+=sizeof(User);
         }
         closedisk();
+        writeInode(node);
         return i;
     }
 }
 
-bool leagleUser(User user){
+//如果用户合法则返回其在硬盘上的位置
+//不合法则返回0
+int leagleUser(User user){
     Inode node=getInode("/etc/passwd");
     opendisk();
     fs.seekg(node.blockaddress[0]*sizeof(Block),ios_base::beg);
     int userNumber=node.filesize/sizeof(User);
+    cout<<userNumber<<endl;
     for(int i=0;i<userNumber;i++){
         User rightUser;
         fs.read((char *)&rightUser,sizeof(rightUser));
@@ -412,11 +422,12 @@ bool leagleUser(User user){
         string name=rightUser.name;
         string password=rightUser.password;
         if(user.name==name && user.password==password){
+            int pos=(int)fs.tellg()-sizeof(User);
             closedisk();
-            return true;
+            return pos;
         }
     }
     closedisk();
-    return false;
+    return 0;
 }
 #endif
