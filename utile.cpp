@@ -402,11 +402,9 @@ int saveTopasswd(User user){
 
 bool leagleUser(User user){
     Inode node=getInode("/etc/passwd");
-    cout<<user.name<<"请求登录"<<"密码:"<<user.password<<endl;
     opendisk();
     fs.seekg(node.blockaddress[0]*sizeof(Block),ios_base::beg);
     int userNumber=node.filesize/sizeof(User);
-    cout<<"一共"<<userNumber<<"个用户"<<endl;
     for(int i=0;i<userNumber;i++){
         User rightUser;
         fs.read((char *)&rightUser,sizeof(rightUser));
@@ -414,7 +412,6 @@ bool leagleUser(User user){
         string name=rightUser.name;
         string password=rightUser.password;
         if(user.name==name && user.password==password){
-            cout<<"验证通过"<<endl;
             closedisk();
             return true;
         }

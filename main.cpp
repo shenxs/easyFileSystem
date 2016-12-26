@@ -12,7 +12,7 @@ int main(){
     init();//初始化文件系统
     // login();//登录
     shell();//启动shell
-    test();
+    // test();
     return 0;
 }
 
