@@ -160,11 +160,11 @@ void init_dir(){
     mkdir("/home","drwxr-xr-w",0,0);
     mkdir("/etc","drwxr-xr-w",0,0);
 
-    mkdir("/home/richard","drwxrwrx---",1,1);
-    mkdir("/home/richard/playground","drwxrwrx---",1,1);
+    mkdir("/home/richard","drwxr-xr-x",1,1);
+    mkdir("/home/richard/playground","drwxr-xr-x",1,1);
     // //创建passwd文件保存用户的账号信息
 
-    touch("/etc/passwd","frwxrwx---",0,0);//只有root以及管理员用户组才可以查看,不保存字符串,直接用二进制保存用户信息,方便使用
+    touch("/etc/passwd","frwx------",0,0);//只有root管理员用户组才可以查看,不保存字符串,直接用二进制保存用户信息,方便使用
 
     User root;
     strcpy(root.name,"root");
@@ -175,7 +175,7 @@ void init_dir(){
     strcpy(richard.name,"richard");
     strcpy(richard.password,"12345");
     richard.user_id=1;
-    richard.group_id=1;
+    richard.group_id=0;
     saveTopasswd(root);//作为一个特殊的函数
     saveTopasswd(richard);
 }
