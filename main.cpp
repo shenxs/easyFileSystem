@@ -11,7 +11,6 @@ void test();
 int main(){
     init();//初始化文件系统
     shell();//启动shell
-    // test();
     return 0;
 }
 

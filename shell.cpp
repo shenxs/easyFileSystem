@@ -37,14 +37,15 @@ void login(){
     if(strcmp(a_user.name,"root")==0)
         PWD="/root";
     else{
-        string home="home";
+        string home="/home/";
         PWD=home+a_user.name;
     }
     cin.ignore();
 }
 
 vector<string> getJob(){
-    cout<<currentUser.name<<'@'<<hostname<<':'<<PWD;
+    cout<<currentUser.name<<'@'<<hostname;
+    // cout<<':'<<PWD;
     if(currentUser.user_id==0)
         cout<<"#";
     else

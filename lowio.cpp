@@ -43,7 +43,7 @@ void closedisk()
 {
     if(fs.is_open())
     {
-    fs.close();
+        fs.close();
     }else{
         cout<<"请先打开磁盘"<<endl;
     }
