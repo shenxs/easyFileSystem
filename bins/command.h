@@ -31,7 +31,17 @@ void initCommands(){
 }
 
 int pwd(vector<string> args){
-    cout<<"施工中"<<endl;
+    string path="/";
+    Inode temp=currentInode;
+    int parent_id;
+    parent_id=getInodeidFromDir(temp,"..");
+    while(temp.inode_id!=parent_id){//不是根节点
+        path=temp.filename+path;
+        path="/"+path;
+        temp=readInode(parent_id);
+        parent_id=getInodeidFromDir(temp,"..");
+    }
+    cout<<path<<endl;
     return 0;
 }
 int whoami(vector<string> args){
@@ -58,7 +68,6 @@ int ls(vector<string> args){
         }
     }
     return 0;
-
 }
 int cd(vector<string> args){
     //遍历文件项,返回指定的inode的编号
