@@ -118,37 +118,20 @@ int common_mkdir(vector<string> args){
     if(args.size()==1){
         cout<<"请输入新建文件夹的文件名"<<endl;
         return -1;
-    }
-    if(currentInode.user_id==
-            currentUser.user_id){
-        //自己的文件
-        if(permissions[2]=='w'){
-            string new_dir_name=args[1];
-            string path=getPath(currentInode)+new_dir_name;
+    }else if(canI(currentInode,currentUser,2)){
+        string new_dir_name=args[1];
+        string path=getPath(currentInode)+new_dir_name;
+        //需要检查重名
+        if(getInodeidFromDir(currentInode,new_dir_name)==-1){
             mkdir(path,"drwxrwxr-x",currentUser.user_id,currentUser.group_id);
         }else{
-             cout<<"对不起,你没有当前目录的写权限"<<endl;
+            cout<<"已存在此文件夹"<<endl;
         }
-    }else if(currentInode.group_id==currentUser.group_id){
-        //同一组
-        if(permissions[5]=='w'){
-            string new_dir_name=args[1];
-            string path=getPath(currentInode)+new_dir_name;
-            mkdir(path,"drwxrwxr-x",currentUser.user_id,currentUser.group_id);
-        }else{
-            cout<<"对不起,你没有当前目录的写权限"<<endl;
-        }
-
     }else{
-        //其他人
-        if(permissions[8]=='w'){
-            string new_dir_name=args[1];
-            string path=getPath(currentInode)+new_dir_name;
-            mkdir(path,"drwxrwxr-x",currentUser.user_id,currentUser.group_id);
-        }else{
-            cout<<"对不起,你没有当前目录的写权限"<<endl;
-        }
+        cout<<"对不起,你没有当前目录的写权限"<<endl;
     }
+
+    //写入新的文件夹后需要重读currentInode因为文件的大小变了
     currentInode=readInode(currentInode.inode_id);
     return 0;
 }

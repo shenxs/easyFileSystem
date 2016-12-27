@@ -274,14 +274,14 @@ int getaFreeBlockAddress(){
             for(int i=0;i<100;i++){
                 a_lnode.blocks[i]=spb.blocks.blocks[i];
             }
-            fs.open(diskname.c_str(),ios_base::in|ios_base::out|ios_base::binary);
+            opendisk();
             fs.seekp(sizeof(Block)*(spb.blocks.next_adress-100),ios_base::beg);
             fs.write((char *)&a_lnode,sizeof(a_lnode));
             //将下一组的自由块的Lnode装入spb
             fs.seekp(sizeof(Block)*spb.blocks.next_adress,ios_base::beg);
             fs.read((char *) &a_lnode,sizeof(a_lnode));
 
-            fs.close();
+            closedisk();
             spb.blocks.free=a_lnode.free;
             spb.blocks.next_adress=a_lnode.next_adress;
             for(int i=0;i<100;i++){

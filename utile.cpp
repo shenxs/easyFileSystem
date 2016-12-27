@@ -1,6 +1,8 @@
 #ifndef UTILE_CPP_
 #define UTILE_CPP_
 
+//辅助函数,一些常用的工具类函数
+
 #include<iostream>
 #include<fstream>
 #include<string>
@@ -23,6 +25,7 @@ void init_dir();//创建初始文件夹
 int touch(string path,string permission,int userid,int groupid);
 int saveTopasswd(User user);
 int leagleUser(User user);
+bool canI(Inode node,User user,int action);//用于权限的鉴定
 //dir是一个文件夹,需要其他的参数写在参数里面
 typedef int (*dirFun)(Directory dir,vector<string> args);//处理文件夹的函数
 //================函数实现=======================================
@@ -192,6 +195,7 @@ int touch(string path,string permission,int userid,int groupid){
     strcpy(file.name,childname.c_str());
     file.inode_id=child_node_id;
     addChild2Dir(parent_node,childname,child_node_id);
+
 
     return child_node_id;
 }
@@ -364,5 +368,25 @@ string getPath(Inode node){
         parent_id=getInodeidFromDir(temp,"..");
     }
     return path;
+}
+
+
+
+//node当前的节点号,user需要鉴定的用户,action所对应的请求
+//action 1 2 3 对应的是读写和执行
+bool canI(Inode node,User user,int action){//用于权限的鉴定
+    string permission=node.permissions;
+    string rwx="rwx";
+    if(node.user_id==user.user_id){
+        if(permission[action]==rwx[action-1])
+            return true;
+    }else if(node.group_id==user.group_id){
+        if(permission[action+3]==rwx[action-1])
+            return true;
+    }else{
+        if(permission[action+6]==rwx[action-1])
+            return true;
+    }
+    return false;
 }
 #endif
