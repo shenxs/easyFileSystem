@@ -113,6 +113,7 @@ int cd(vector<string> args){
 }
 int common_mkdir(vector<string> args){
     //新建一个文件夹,如果用户对于当前文件夹有可写权限的话
+    //检查是否有重名
     string permissions=currentInode.permissions;
     if(args.size()==1){
         cout<<"请输入新建文件夹的文件名"<<endl;

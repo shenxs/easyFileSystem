@@ -20,115 +20,13 @@ Inode getInode(Inode parent,string path);
 string getPath(Inode node);
 int getFileAddress(Inode node,int i);
 void init_dir();//创建初始文件夹
-void init_fs();
 int touch(string path,string permission,int userid,int groupid);
 int saveTopasswd(User user);
 int leagleUser(User user);
 //dir是一个文件夹,需要其他的参数写在参数里面
 typedef int (*dirFun)(Directory dir,vector<string> args);//处理文件夹的函数
 //================函数实现=======================================
-//返回一个初始化的超级块
-Superblock init_superBolck(){
-    Superblock spb;
-    spb.magicnumber=maggci_number;
-    strcpy(spb.fsname,"easyfs");
-    spb.inode_number=(data_start-2)*block_size/sizeof(Inode);
-    spb.root_inode=0;//根文件夹的inode的下标
-    spb.inode_usered=1;//已经使用了的inode的数量,根节点已经使用了一个
-    spb.blocks.free=stack_size;
-    spb.blocks.next_adress=stack_size+data_start;
 
-    for(int i=0;i<spb.blocks.free;i++){
-        spb.blocks.blocks[i]=data_start+i;
-    }
-    return spb;
-}
-
-//在虚拟磁盘上初始化一个可用的文件系统
-void init_fs(){
-    Block blocks[block_number];
-    opendisk();
-    fs.write((char *)&blocks,sizeof(blocks));
-
-    //跳过MBR
-    fs.seekp(sizeof(Block));
-    Superblock spb;
-    spb=init_superBolck();
-    fs.write((char*) &spb,sizeof(spb));
-
-    //存放inode数组
-    Inode an_inode;
-    fs.seekp(2*sizeof(Block),ios_base::beg);
-
-    int inode_number=(data_start-2)*block_size/sizeof(Inode);
-
-    for(int i=0;i<inode_number;i++)
-    {
-        an_inode.inode_id=i;
-        fs.write((char*)&an_inode,sizeof(an_inode));
-    }
-
-    //前48个block用于mbr,superblock和inode数组
-    //inodes从第三个block开始存放,45个block可以存放45*512/sizeof(inode)
-
-    fs.seekp(data_start*sizeof(Block),ios_base::beg);
-
-    streampos start,end;//数据的起始位置和结束位置
-    start=fs.tellp();
-    fs.seekp(0,ios_base::end);
-    end=fs.tellp();
-    Lnode a_lnode;
-
-    fs.seekp(data_start*sizeof(Block),ios_base::beg);
-    int i;
-    for(i=0;i<((end-start)/block_size/stack_size);i++){
-        a_lnode.free=100;
-        a_lnode.next_adress=data_start+(i+1)*100;
-        for(int j=0;j<stack_size;j++){
-            a_lnode.blocks[j]=data_start+i*100+j;
-        }
-        fs.write((char*)&a_lnode,sizeof(a_lnode));
-        fs.seekp((48+100*(i+1))*512,ios_base::beg);
-    }
-    //除了最后一组,其他的都比较相似
-    streampos near_end=fs.tellp();
-    if(near_end==end){
-        //说明已经结束,需要将最后一组的第一个块中的next修改为0
-        fs.seekp(-(stack_size*block_size),ios_base::cur);
-        a_lnode.next_adress=0;
-        fs.write((char*)&a_lnode,sizeof(a_lnode));
-    }else{
-        //说明最后还有一些不到一百个的块
-        a_lnode.free=(end-near_end)/sizeof(Block);
-        a_lnode.next_adress=0;
-        for(int j=0;j<a_lnode.free;j++){
-            a_lnode.blocks[j]=data_start+i*100+j;
-        }
-    }
-    closedisk();
-    //创建必要的文件
-    init_dir();
-}
-
-//判断一个磁盘上是否已有一个文件系统
-bool gooddisk(){
-    //通过超级块上的标记判断是否有一个文件系统
-    //超级块是第1块,第0块为导引块,MBR保留
-    // fs.seekg(sizeof(Block),ios_base::beg);//指向第1块
-    // Superblock *spb=new Superblock;
-    // fs.read((char *)spb,sizeof(Superblock));
-    // fs.close();
-    Superblock spb=getSuperBlock();
-    bool result;
-    if(spb.magicnumber==maggci_number){
-        result=true;
-    }else{
-        result=false;
-    }
-    return result;
-}
-
-//返回一个可用的空闲块,如果没有空闲块则返回0
 void init_dir(){
     //创建根文件夹,/root,/home,/etc/passwd
 
@@ -432,9 +330,6 @@ int showDir(Directory dir,vector<string> args){
 }
 
 void traverse_ls(Inode node,dirFun func ,User user){
-    //遍历一个文件夹下的内容,对其每一个文件项应用dirFun
-    //需要考虑一级,二级索引
-
     //是否是一个文件夹?
     if(node.permissions[0]!='d'){
         cout<<"这不是一个文件夹"<<endl;

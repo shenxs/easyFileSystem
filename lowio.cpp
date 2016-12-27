@@ -6,7 +6,7 @@
 #include<string.h>
 #include"struct.cpp"
 #include"config.h"
-#include"utile.cpp"
+// #include"utile.cpp"
 using namespace std;
 //底层的磁盘的读写,读取写入spb,inode,添加一个目录项
 
@@ -26,7 +26,6 @@ int addChild2Dir(Inode parent_node,string childname,int inode_id);
 int getaFreeBlockAddress();
 void writeDir(int pos,Directory dir);
 //===============================================================
-
 
 
 
@@ -90,6 +89,7 @@ int writeSuperBlock(Superblock spb){
 int addInode(Inode inode){
     //向inode数组添加一个新的inode,如果成功则返回新的Inode的id,第一个inode编号为0
     //如果添加失败则返回-1
+    //inode的id通过遍历inode节点来判断因为inode可能会被删除,造成间断
     Superblock spb=getSuperBlock();
     int current=spb.inode_usered;
     if(current>=spb.inode_number){
@@ -253,6 +253,7 @@ int addChild2Dir(Inode parent_node,string childname,int inode_id){
     return block_index*sizeof(Block)+pianyi;
 }
 
+//返回一个可用的空闲块,如果没有空闲块则返回-1
 int getaFreeBlockAddress(){
     Superblock spb=getSuperBlock();
     if(spb.blocks.free>1)
