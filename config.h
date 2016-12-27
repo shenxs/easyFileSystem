@@ -12,6 +12,6 @@ int data_start=48;
 int stack_size=100;//成组链接法的一组的大小
 int addressNumber=block_size/sizeof(short );//一个块可以存放多少的地址项
 std::string diskname="virtualdisk";
-std::string hostname="virtualdisk";
+std::string hostname="dog";
 std::fstream fs; //文件流
 #endif

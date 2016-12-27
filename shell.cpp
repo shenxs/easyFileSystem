@@ -19,7 +19,6 @@ int work(vector<string> job);
 void shell();
 
 
-
 void login(){
     string username,password;
     int flag=0;
@@ -53,14 +52,12 @@ vector<string> getJob(){
     else
         cout<<'$';
 
-
     vector<string> job;
     string line;
 
     //这里很重要,需要先清空,不然会崩溃
     //c++太脏
     cin.clear();
-
     std::getline(cin,line);
     istringstream iss(line);
     for(string arg;iss>>arg;job.push_back(arg)){}

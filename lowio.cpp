@@ -31,7 +31,6 @@ void writeDir(int pos,Directory dir);
 
 
 //===========================函数实现============================
-
 void opendisk(){
     if(!fs.is_open()){
     fs.open(diskname.c_str(),ios_base::in|ios_base::out|ios_base::binary);

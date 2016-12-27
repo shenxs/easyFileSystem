@@ -17,6 +17,7 @@ using namespace std;
 int mkdir(string path,string permission,int userid ,int groupid);
 Inode getInode(string path);
 Inode getInode(Inode parent,string path);
+string getPath(Inode node);
 int getFileAddress(Inode node,int i);
 void init_dir();//创建初始文件夹
 void init_fs();
@@ -160,8 +161,8 @@ void init_dir(){
     mkdir("/home","drwxr-xr-w",0,0);
     mkdir("/etc","drwxr-xr-w",0,0);
 
-    mkdir("/home/richard","drwxr-xr-x",1,1);
-    mkdir("/home/richard/playground","drwxr-xr-x",1,1);
+    mkdir("/home/richard","drwxr-xr-x",1,0);
+    mkdir("/home/richard/playground","drwxr-xr-x",1,0);
     // //创建passwd文件保存用户的账号信息
 
     touch("/etc/passwd","frwx------",0,0);//只有root管理员用户组才可以查看,不保存字符串,直接用二进制保存用户信息,方便使用
@@ -184,7 +185,6 @@ void init_dir(){
 int mkdir(string path,string permission,int userid ,int groupid)
 {
     Inode parent_node,new_node;
-
     //1得到上一级目录的inode节点
     string parent_path=get_parentPath(path);
     parent_node=getInode(readInode(0),parent_path.substr(1,parent_path.length()));
@@ -455,8 +455,19 @@ void traverse_ls(Inode node,dirFun func ,User user){
             cout<<'\t';
         }
         cout<<endl;
-
     }
 }
-
+string getPath(Inode node){
+    string path="/";
+    Inode temp=node;
+    int parent_id;
+    parent_id=getInodeidFromDir(temp,"..");
+    while(temp.inode_id!=parent_id){//不是根节点
+        path=temp.filename+path;
+        path="/"+path;
+        temp=readInode(parent_id);
+        parent_id=getInodeidFromDir(temp,"..");
+    }
+    return path;
+}
 #endif
