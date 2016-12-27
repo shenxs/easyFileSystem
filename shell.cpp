@@ -32,6 +32,7 @@ void login(){
         flag=leagleUser(a_user);
     }
     cout<<"Welcome!"<<endl;
+
     // 登录完成后需要设定初始的环境变量
     currentUser=readUser(flag);
     if(strcmp(a_user.name,"root")==0)
@@ -40,6 +41,7 @@ void login(){
         string home="/home/";
         PWD=home+a_user.name;
     }
+    currentInode=getInode(PWD);
     cin.ignore();
 }
 

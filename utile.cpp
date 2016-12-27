@@ -13,7 +13,6 @@
 #include"help.cpp"
 using namespace std;
 
-
 //================函数申明=======================================
 int mkdir(string path,string permission,int userid ,int groupid);
 Inode getInode(string path);
@@ -128,7 +127,6 @@ bool gooddisk(){
     return result;
 }
 
-
 //返回一个可用的空闲块,如果没有空闲块则返回0
 void init_dir(){
     //创建根文件夹,/root,/home,/etc/passwd
@@ -181,10 +179,6 @@ void init_dir(){
     saveTopasswd(root);//作为一个特殊的函数
     saveTopasswd(richard);
 }
-
-
-
-
 
 //新建一个文件夹
 int mkdir(string path,string permission,int userid ,int groupid)
@@ -279,7 +273,6 @@ Inode getInode(string path){
 //创建一个路径为path的文件,文件内容为空
 //但是也分配一个块
 int touch(string path,string permission,int userid,int groupid){
-
     string parent_path=get_parentPath(path);
     string childname=getChildName(path);
     Inode parent_node,child_node;
@@ -413,7 +406,6 @@ int getFileAddress(Inode node ,int i){
         int result=block_index*sizeof(Block)+pianyi;
         return result;
     }
-
 }
 
 //根据文件夹输出一定的内容
@@ -465,7 +457,6 @@ void traverse_ls(Inode node,dirFun func ,User user){
         cout<<endl;
 
     }
-
 }
 
 #endif

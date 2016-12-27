@@ -12,6 +12,7 @@ using namespace std;
 typedef int (*FnPtr)(vector<string>);
 std::map<std::string,FnPtr> commandMap;
 User currentUser;
+Inode currentInode;
 string PWD="/";
 
 int ls(vector<string> args);
@@ -27,7 +28,7 @@ void initCommands(){
 }
 
 int pwd(vector<string> args){
-    cout<<PWD<<endl;
+    cout<<"施工中"<<endl;
     return 0;
 }
 int ls(vector<string> args){
@@ -35,8 +36,8 @@ int ls(vector<string> args){
     //遍历目录项,应用输出文件名函数
     if(args.size()==1){
         //没有任何参数,显示当前文件夹下的内容
-        Inode node=getInode(PWD);
-        traverse_ls(node,showDir,currentUser);
+        // Inode node=getInode(PWD);
+        traverse_ls(currentInode,showDir,currentUser);
     }
     return 0;
 
@@ -45,7 +46,15 @@ int cd(vector<string> args){
     //遍历文件项,返回指定的inode的编号
     //修改pwd
     string path=args[1];
-    Inode node=getInode(PWD);
+    // Inode node=getInode(PWD);
+    if(path[0]=='/')//绝对路径
+    {
+        currentInode=getInode(readInode(0),path);
+    }else{
+        currentInode=getInode(currentInode,path);
+    }
+
+    return 0;
 
 }
 #endif

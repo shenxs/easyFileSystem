@@ -5,8 +5,8 @@
 #include<string>
 #include<string.h>
 #include"struct.cpp"
-// #include"help.cpp"
 #include"config.h"
+#include"utile.cpp"
 using namespace std;
 //底层的磁盘的读写,读取写入spb,inode,添加一个目录项
 
@@ -131,7 +131,6 @@ int addChild2Dir(Inode parent_node,string childname,int inode_id){
             block_index=parent_node.blockaddress[parent_node.blocknum-1];
             pianyi=parent_node.filesize%sizeof(Block);
         }
-
     }else if(parent_node.blocknum==4){
         block_index=parent_node.blocknum-1;
         pianyi=parent_node.filesize%sizeof(Block);
@@ -249,7 +248,6 @@ int addChild2Dir(Inode parent_node,string childname,int inode_id){
         return -1;
     }
     fs.close();
-
     parent_node.filesize+=sizeof(child);
     writeInode(parent_node);
     writeDir(block_index*sizeof(Block)+pianyi,child);
