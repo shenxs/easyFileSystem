@@ -18,6 +18,7 @@ using namespace std;
 int mkdir(string path,string permission,int userid ,int groupid);
 Inode getInode(string path);
 Inode getInode(Inode parent,string path);
+int getFileAddress(Inode node,int i);
 void init_dir();//创建初始文件夹
 void init_fs();
 int touch(string path,string permission,int userid,int groupid);
@@ -227,85 +228,18 @@ int mkdir(string path,string permission,int userid ,int groupid)
 //inode代表一个目录的inode,从中找到相应的文件(目录或者文件)所对应的inode的id
 //如果没有找到则返回-1
 int getInodeidFromDir(Inode inode,string filename){
-    opendisk();
-    unsigned int count=0;//查看是否已经查找了所有的目录项了
     unsigned int dirs=inode.filesize/sizeof(Directory);//最多有多少的目录项
-    int i=0;
-    for(i=0;i<4;i++){
-        int address=inode.blockaddress[i];
-        fs.seekg(address*sizeof(Block),ios_base::beg);
-        for(unsigned int j=0;j<(sizeof(Block)/sizeof(Directory));j++){
-            Directory temp;
-            fs.read((char*)&temp,sizeof(temp));
-            count++;
-            string name=temp.name;
-            if(name==filename){
-                closedisk();
-                return temp.inode_id;
-            }
-            if(count>dirs){
-                cout<<"没有在"<<inode.filename<<"找到此子文件"<<filename<<endl;
-                closedisk();
-                return -1; //已经找完了还是没找到
-            }
-        }
+    for(unsigned int i=0;i<dirs;i++){
+        int address=getFileAddress(inode,i*sizeof(Directory));
+        opendisk();
+        fs.seekg(address,ios_base::beg);
+        Directory temp;
+        fs.read((char*)&temp,sizeof(temp));
+        closedisk();
+        string tempname=temp.name;
+        if(filename==tempname)
+            return temp.inode_id;
     }
-
-    //间接地址,用short int存放
-    i=4;
-    int address=inode.blockaddress[i];
-    for(unsigned int j=0;j<(sizeof(Block)/sizeof(short int));j++){
-        short int real_address;
-        fs.seekg(address*sizeof(Block)+j*(sizeof(short int)),ios_base::beg);
-        fs.read((char *)&real_address,sizeof(real_address));
-        fs.seekg(real_address*sizeof(Block),ios_base::beg);
-        while(count<=(sizeof(Block)/sizeof(Directory))){
-            Directory temp;
-            fs.read((char*)&temp,sizeof(temp));
-            count++;
-            string name=temp.name;
-            if(name==filename){
-                closedisk();
-                return temp.inode_id;
-            }
-            if(count>=dirs){
-                closedisk();
-                return -1; //已经找完了还是没找到
-            }
-        }
-    }
-
-    i=5;
-    address=inode.blockaddress[i];
-    for(unsigned int j=0;j<(sizeof(Block)/sizeof(short int));j++){
-        short int real_address;
-        fs.seekg(address*sizeof(Block)+j*(sizeof(short int)),ios_base::beg);
-        fs.read((char *)&real_address,sizeof(real_address));
-
-        short int real_real_adress;
-        for(unsigned int k=0;k<(sizeof(Block)/sizeof(short int));k++)
-        {
-            fs.seekg(real_address*sizeof(Block)+k*sizeof(short int),ios_base::beg);
-            fs.read((char *)&real_real_adress,sizeof(real_real_adress));
-            fs.seekg(real_real_adress*sizeof(Block),ios_base::beg);
-
-            while(count<=(sizeof(Block)/sizeof(Directory))){
-                Directory temp;
-                fs.read((char*)&temp,sizeof(temp));
-                count++;
-                string name=temp.name;
-                if(name==filename){
-                    closedisk();
-                    return temp.inode_id;
-                }
-                if(count>=dirs){
-                    closedisk();
-                    return -1; //已经找完了还是没找到
-                }
-            }
-        }
-    }
-    closedisk();
     return -1;
 }
 
@@ -461,8 +395,8 @@ int getFileAddress(Inode node ,int i){
             fs.read((char *)&block_index,sizeof(block_index));
             closedisk();
         }else if(i<4*sizeof(Block)+
-                    addressNumber*sizeof(Block)
-                    +addressNumber*addressNumber*sizeof(Block)){
+                addressNumber*sizeof(Block)
+                +addressNumber*addressNumber*sizeof(Block)){
             //二级间接
             short index=5;
             index=node.blockaddress[index];
@@ -481,7 +415,6 @@ int getFileAddress(Inode node ,int i){
     }
 
 }
-
 
 //根据文件夹输出一定的内容
 int showDir(Directory dir,vector<string> args){

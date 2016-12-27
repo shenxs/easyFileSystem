@@ -33,14 +33,19 @@ int pwd(vector<string> args){
 int ls(vector<string> args){
     //显示当前目录下的内容
     //遍历目录项,应用输出文件名函数
-    Inode node=getInode(PWD);
-    traverse_ls(node,showDir,currentUser);
+    if(args.size()==1){
+        //没有任何参数,显示当前文件夹下的内容
+        Inode node=getInode(PWD);
+        traverse_ls(node,showDir,currentUser);
+    }
     return 0;
 
 }
 int cd(vector<string> args){
     //遍历文件项,返回指定的inode的编号
     //修改pwd
+    string path=args[1];
+    Inode node=getInode(PWD);
 
 }
 #endif
