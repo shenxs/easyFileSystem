@@ -22,6 +22,7 @@ int common_mkdir(vector<string> args);
 int whoami(vector<string> args);
 int login(vector<string> args);
 int help(vector<string> args);
+int touch(vector<string> args);
 //初始化commandMap()
 void initCommands(){
     commandMap.clear();
@@ -33,6 +34,13 @@ void initCommands(){
     commandMap.insert(pair<string,FnPtr>("login",login));
     commandMap.insert(pair<string,FnPtr>("su",login));
     commandMap.insert(pair<string,FnPtr>("help",help));
+    commandMap.insert(pair<string,FnPtr>("touch",touch));
+}
+
+//touch如果没有此文件则创建一个空文件,如果有此文件则更新其时间戳
+int touch(vector<string> args){
+    cout<<"施工中"<<endl;
+    return 0;
 }
 int help(vector<string> args){
     map<string,FnPtr>::iterator it=commandMap.begin();
@@ -71,7 +79,7 @@ int login(vector<string> args){
 }
 int pwd(vector<string> args){
     cout<<getPath(currentInode)<<endl;
-   return 0;
+    return 0;
 }
 int whoami(vector<string> args){
     cout<<"name:\t"<<currentUser.name<<endl;
@@ -88,9 +96,13 @@ int ls(vector<string> args){
         traverse_ls(currentInode,showDir,currentUser);
     }else{//包含一个路径的参数
         string path=args[1];
-        if(path[0]=='/'){
+        if(path[0]=='/'){//如果是绝对路径
             Inode node=getInode(readInode(0),path.substr(1,path.length()));
             traverse_ls(node,showDir,currentUser);
+        }else if(path=="-l"){//如果是有-l参数
+            Inode node=getInode(currentInode,path);
+            traverse_ls(node,showDirDetial,currentUser);
+
         }else{
             Inode node=getInode(currentInode,path);
             traverse_ls(node,showDir,currentUser);
@@ -114,6 +126,7 @@ int cd(vector<string> args){
 int common_mkdir(vector<string> args){
     //新建一个文件夹,如果用户对于当前文件夹有可写权限的话
     //检查是否有重名
+    //TODO检查文件名的合法性
     string permissions=currentInode.permissions;
     if(args.size()==1){
         cout<<"请输入新建文件夹的文件名"<<endl;

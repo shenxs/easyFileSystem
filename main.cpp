@@ -16,9 +16,5 @@ int main(){
 }
 
 void test(){
-    showInodes();
-    // cout<<get_parentPath("/home/richard/playground");
-    // showInode(readInode(getInodeidFromDir(getInode("/etc"),"passwd")));
-    // showInode(getInode(readInode(0),"home/richard/playground"));
-    // showInodes();
+    cout<<getInodeidFromDir(readInode(0),"Hello");
 }

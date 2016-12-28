@@ -158,6 +158,7 @@ Inode getInode(Inode parent,string path){
         string childname=path.substr(0,path.find_first_of("/"));
         int nodeId=getInodeidFromDir(parent,childname);
         if(nodeId==-1){
+            cout<<"没有"<<childname<<"这个文件夹"<<endl;
             return parent;
         }
         parent=readInode(nodeId);
@@ -311,26 +312,41 @@ int getFileAddress(Inode node ,int i){
 }
 
 //根据文件夹输出一定的内容
+//如果可以显示返回1表示显示成功
+//否则返回0
 int showDir(Directory dir,vector<string> args){
     Inode node=readInode(dir.inode_id);
     //如果拥有权限则输出
     int user_id=std::stoi(args[0]);
     int group_id=std::stoi(args[1]);
-    if(node.user_id==user_id){
-        if(node.permissions[1]=='r'){
-            cout<<dir.name;
-        }
-
-    }else if(node.group_id==group_id){
-        if(node.permissions[4]=='r'){
-            cout<<dir.name;
-        }
+    User temp;
+    temp.user_id=user_id;
+    temp.group_id=group_id;
+    if(canI(node,temp,1)){
+        cout<<dir.name<<endl;
+        return 1;
     }else{
-        if(node.permissions[7]=='r'){
-            cout<<dir.name;
-        }
+        return 0;
+    }
+}
+
+
+//显示详细的信息
+int showDirDetial(Directory dir ,vector<string> args){
+    Inode node=readInode(dir.inode_id);
+    //如果拥有权限则输出
+    int user_id=std::stoi(args[0]);
+    int group_id=std::stoi(args[1]);
+    User temp;
+    temp.user_id=user_id;
+    temp.group_id=group_id;
+    if(canI(node,temp,1)){
+        cout<<node.permissions<<" "<<node.inode_id<<" "<<node.user_id<<" "<<node.group_id
+            <<" "<<node.filesize<<"B "<<node.mtime<<" "<<dir.name<<endl;
+        return 1;
     }
     return 0;
+
 }
 
 void traverse_ls(Inode node,dirFun func ,User user){
@@ -351,9 +367,7 @@ void traverse_ls(Inode node,dirFun func ,User user){
             args.push_back(std::to_string(user.group_id));
             //此处应该有文件夹的输出
             func(temp,args);
-            cout<<'\t';
         }
-        cout<<endl;
     }
 }
 string getPath(Inode node){
