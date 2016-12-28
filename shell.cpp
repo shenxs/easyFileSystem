@@ -19,31 +19,6 @@ int work(vector<string> job);
 void shell();
 
 
-void login(){
-    string username,password;
-    int flag=0;
-    User a_user;
-    while(!flag){
-        cout<<"Login as:";cin>>username;
-        cout<<username<<"'s password:";cin>>password;
-        strcpy(a_user.name,username.c_str());
-        strcpy(a_user.password,password.c_str());
-        flag=leagleUser(a_user);
-    }
-    cout<<"Welcome!"<<endl;
-
-    // 登录完成后需要设定初始的环境变量
-    currentUser=readUser(flag);
-    if(strcmp(a_user.name,"root")==0)
-        PWD="/root";
-    else{
-        string home="/home/";
-        PWD=home+a_user.name;
-    }
-    currentInode=getInode(PWD);
-    cin.ignore();
-}
-
 vector<string> getJob(){
     cout<<currentUser.name<<'@'<<hostname;
     // cout<<':'<<PWD;
@@ -84,9 +59,9 @@ int work(vector<string> job){
 
 
 void shell(){
-    login();
-    initCommands();//将所有的命令进行装载
     vector<string> job;
+    login(job);
+    initCommands();//将所有的命令进行装载
 
     job=getJob();
 

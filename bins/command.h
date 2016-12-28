@@ -5,6 +5,9 @@
 #include<map>
 #include<vector>
 #include<string>
+#include <termios.h>
+#include <unistd.h>
+
 #include"../struct.cpp"
 #include"../utile.cpp"
 using namespace std;
@@ -14,6 +17,21 @@ std::map<std::string,FnPtr> commandMap;
 User currentUser;
 Inode currentInode;
 string PWD="/";
+
+inline void eatline(){while (std::cin.get()!='\n') continue;}
+
+string getpasswdfromcin(){
+    termios oldt;
+    tcgetattr(STDIN_FILENO, &oldt);
+    termios newt = oldt;
+    newt.c_lflag &= ~ECHO;
+    tcsetattr(STDIN_FILENO, TCSANOW, &newt);
+    string s;
+    getline(cin, s);
+    tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
+    cout<<endl;
+    return s;
+}
 
 int ls(vector<string> args);
 int cd(vector<string> args);
@@ -67,15 +85,13 @@ int passwd(vector<string> args){
     if(args.size()==1){
         cout<<"更改当前用户"<<currentUser.name<<"的密码"<<endl;
         cout<<"请输入当前的密码 :";
-        string oldpass;
-        cin>>oldpass;
+        // cin.clear();
+        string oldpass=getpasswdfromcin();
         if(oldpass==currentUser.password){
             cout<<"请输入新密码 :";
-            string pass1;
-            cin>>pass1;
+            string pass1=getpasswdfromcin();
             cout<<"请再次输入密码 :";
-            string pass2;
-            cin>>pass2;
+            string pass2=getpasswdfromcin();
             if(pass1==pass2){
                 strcpy(currentUser.password,pass1.c_str());
                 saveTopasswd(currentUser);
@@ -90,10 +106,6 @@ int passwd(vector<string> args){
     }else{
         cout<<"命令格式错误"<<endl;
     }
-
-
-    cin.clear();
-    cin.ignore();
     return 0;
 }
 int chmod(vector<string> args){
@@ -189,13 +201,14 @@ int login(vector<string> args){
     User a_user;
     while(!flag){
         cout<<"Login as:";cin>>username;
-        cout<<username<<"'s password:";cin>>password;
+        eatline();
+        cout<<username<<"'s password:";
+        password=getpasswdfromcin();
         strcpy(a_user.name,username.c_str());
         strcpy(a_user.password,password.c_str());
         flag=leagleUser(a_user);
     }
     cout<<"Welcome!"<<endl;
-
     // 登录完成后需要设定初始的环境变量
     currentUser=readUser(flag);
     if(strcmp(a_user.name,"root")==0)
@@ -205,7 +218,7 @@ int login(vector<string> args){
         PWD=home+a_user.name;
     }
     currentInode=getInode(PWD);
-    cin.ignore();
+    // cin.ignore();
     return 0;
 
 }
