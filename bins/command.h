@@ -40,6 +40,7 @@ void initCommands(){
 //touch如果没有此文件则创建一个空文件,如果有此文件则更新其时间戳
 //touch name
 //new file or updatefile mtime
+//TODO 检查文件名是否合法
 int touch(vector<string> args){
     if(args.size()<=1){
         return -1;
@@ -135,6 +136,7 @@ int ls(vector<string> args){
     }
     return 0;
 }
+
 int cd(vector<string> args){
     //遍历文件项,返回指定的inode的编号
     //修改pwd
