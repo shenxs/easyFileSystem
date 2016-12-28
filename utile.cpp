@@ -147,14 +147,16 @@ Inode getInode(Inode parent,string path){
         //已近找完了
         return parent;
     }else if(path.find_first_of("/")==string::npos){
-        //最后一项了
+        //最后一项了,可能是文件或文件夹
         int nodeId=getInodeidFromDir(parent,path);
         if(nodeId==-1){
+            cout<<path<<"不存在"<<endl;
             return parent;
         }
         Inode node=readInode(nodeId);
         return node;
     }else{
+        //还有至少各个分隔符所以是文件夹
         string childname=path.substr(0,path.find_first_of("/"));
         int nodeId=getInodeidFromDir(parent,childname);
         if(nodeId==-1){
@@ -162,6 +164,9 @@ Inode getInode(Inode parent,string path){
             return parent;
         }
         parent=readInode(nodeId);
+        if(parent.permissions[0]!='d'){
+            cout<<parent.filename<<"不是一个文件夹"<<endl;
+        }
         string new_path=path.substr(path.find_first_of("/")+1,path.length());
         return getInode(parent,new_path);
     }

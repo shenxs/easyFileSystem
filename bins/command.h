@@ -142,9 +142,20 @@ int cd(vector<string> args){
     // Inode node=getInode(PWD);
     if(path[0]=='/')//绝对路径
     {
-        currentInode=getInode(readInode(0),path.substr(1,path.length()));
+        Inode temp=getInode(readInode(0),path.substr(1,path.length()));
+        if(temp.permissions[0]=='d')
+            currentInode=temp;
+        else{
+            cout<<temp.filename<<"不是一个文件夹"<<endl;
+        }
     }else{//相对路径
-        currentInode=getInode(currentInode,path);
+
+        Inode temp=getInode(currentInode,path);
+        if(temp.permissions[0]=='d'){
+            currentInode=temp;
+        }else{
+            cout<<temp.filename<<"不是一个文件夹"<<endl;
+        }
     }
     return 0;
 }
