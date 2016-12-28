@@ -346,7 +346,6 @@ int showDirDetial(Directory dir ,vector<string> args){
         return 1;
     }
     return 0;
-
 }
 
 void traverse_ls(Inode node,dirFun func ,User user){
@@ -371,7 +370,11 @@ void traverse_ls(Inode node,dirFun func ,User user){
     }
 }
 string getPath(Inode node){
-    string path="/";
+
+    Superblock spb=getSuperBlock();
+    if(node.inode_id==spb.root_inode)
+        return "/";
+    string path="";
     Inode temp=node;
     int parent_id;
     parent_id=getInodeidFromDir(temp,"..");

@@ -38,10 +38,36 @@ void initCommands(){
 }
 
 //touch如果没有此文件则创建一个空文件,如果有此文件则更新其时间戳
+//touch name
+//new file or updatefile mtime
 int touch(vector<string> args){
-    cout<<"施工中"<<endl;
+    if(args.size()<=1){
+        return -1;
+    }else{
+        string name=args[1];
+        int id=getInodeidFromDir(currentInode,name);
+        if(canI(currentInode,currentUser,2)){
+            if(id==-1){
+                //如果不存在此文件则新建
+                string path=getPath(currentInode);
+                path=path+"/"+name;
+                touch(path,"frw-rw-r--",currentUser.user_id,currentUser.group_id);
+                currentInode=readInode(currentInode.inode_id);
+                return 0;
+            }else{
+                //已经存在这个文件了,更新他的时间戳
+                Inode temp=readInode(id);
+                temp.mtime=time(0);
+                writeInode(temp);
+                return 0;
+            }
+        }else{
+            cout<<"对不起没有权限"<<endl;
+        }
+    }
     return 0;
 }
+
 int help(vector<string> args){
     map<string,FnPtr>::iterator it=commandMap.begin();
     cout<<"当前可用命令列表"<<endl;
@@ -102,7 +128,6 @@ int ls(vector<string> args){
         }else if(path=="-l"){//如果是有-l参数
             Inode node=getInode(currentInode,path);
             traverse_ls(node,showDirDetial,currentUser);
-
         }else{
             Inode node=getInode(currentInode,path);
             traverse_ls(node,showDir,currentUser);
@@ -143,7 +168,6 @@ int common_mkdir(vector<string> args){
     }else{
         cout<<"对不起,你没有当前目录的写权限"<<endl;
     }
-
     //写入新的文件夹后需要重读currentInode因为文件的大小变了
     currentInode=readInode(currentInode.inode_id);
     return 0;
