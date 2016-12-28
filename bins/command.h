@@ -23,6 +23,7 @@ int whoami(vector<string> args);
 int login(vector<string> args);
 int help(vector<string> args);
 int touch(vector<string> args);
+int cat(vector<string> args);
 //初始化commandMap()
 void initCommands(){
     commandMap.clear();
@@ -35,7 +36,44 @@ void initCommands(){
     commandMap.insert(pair<string,FnPtr>("su",login));
     commandMap.insert(pair<string,FnPtr>("help",help));
     commandMap.insert(pair<string,FnPtr>("touch",touch));
+    commandMap.insert(pair<string,FnPtr>("cat",cat));
 }
+
+//输出一个中的内容,只能是f
+int cat(vector<string> args){
+    if(args.size()==1){
+        return -1;
+    }else{
+        string file=args[1];
+        int InodeId=getInodeidFromDir(currentInode,file);
+        if(InodeId==-1){
+            cout<<file<<"不存在"<<endl;
+        }else{
+            Inode node=readInode(InodeId);
+            if(node.permissions[0]!='f'){
+                cout<<node.filename<<"不是一个文件"<<endl;
+            }else{
+                if(canI(node,currentUser,1)){
+                    for(int i=0;i<node.filesize;i++){
+                        int address=getFileAddress(node,i);
+                        opendisk();
+                        fs.seekg(address,ios_base::beg);
+                        char c;
+                        fs.read((char *)&c,sizeof(c));
+                        closedisk();
+                        cout<<c;
+                    }
+                    cout<<endl;
+                }else{
+                    cout<<"对不起你没有访问权限"<<endl;
+                }
+            }
+        }
+
+    }
+
+}
+
 
 //touch如果没有此文件则创建一个空文件,如果有此文件则更新其时间戳
 //touch name
