@@ -70,6 +70,9 @@ int work(vector<string> job){
     if(commandMap[str]!=NULL){
         commandMap[str](job);
     }else{
+        map<string,FnPtr>::iterator it;
+        it=commandMap.find(str);
+        commandMap.erase(it);
         //有意思,一点点小魔法
         //古老的ascii协议
         //这东西叫ascii转义序列

@@ -24,6 +24,7 @@ int login(vector<string> args);
 int help(vector<string> args);
 int touch(vector<string> args);
 int cat(vector<string> args);
+int clear(vector<string> args);
 //初始化commandMap()
 void initCommands(){
     commandMap.clear();
@@ -37,8 +38,14 @@ void initCommands(){
     commandMap.insert(pair<string,FnPtr>("help",help));
     commandMap.insert(pair<string,FnPtr>("touch",touch));
     commandMap.insert(pair<string,FnPtr>("cat",cat));
+    commandMap.insert(pair<string,FnPtr>("clear",clear));
 }
 
+//清屏
+int clear(vector<string> args){
+    cout<<" \033c";
+    return 0;
+}
 //输出一个中的内容,只能是f
 int cat(vector<string> args){
     if(args.size()==1){
@@ -165,8 +172,8 @@ int ls(vector<string> args){
             Inode node=getInode(readInode(0),path.substr(1,path.length()));
             traverse_ls(node,showDir,currentUser);
         }else if(path=="-l"){//如果是有-l参数
-            Inode node=getInode(currentInode,path);
-            traverse_ls(node,showDirDetial,currentUser);
+            // Inode node=getInode(currentInode,path);
+            traverse_ls(currentInode,showDirDetial,currentUser);
         }else{
             Inode node=getInode(currentInode,path);
             traverse_ls(node,showDir,currentUser);
@@ -209,7 +216,7 @@ int common_mkdir(vector<string> args){
         return -1;
     }else if(canI(currentInode,currentUser,2)){
         string new_dir_name=args[1];
-        string path=getPath(currentInode)+new_dir_name;
+        string path=getPath(currentInode)+"/"+new_dir_name;
         //需要检查重名
         if(getInodeidFromDir(currentInode,new_dir_name)==-1){
             mkdir(path,"drwxrwxr-x",currentUser.user_id,currentUser.group_id);
