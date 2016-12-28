@@ -25,6 +25,10 @@ int help(vector<string> args);
 int touch(vector<string> args);
 int cat(vector<string> args);
 int clear(vector<string> args);
+int chgrp(vector<string> args);
+int chmod(vector<string> args);
+int chown(vector<string> args);
+int passwd(vector<string> args);
 //初始化commandMap()
 void initCommands(){
     commandMap.clear();
@@ -39,6 +43,62 @@ void initCommands(){
     commandMap.insert(pair<string,FnPtr>("touch",touch));
     commandMap.insert(pair<string,FnPtr>("cat",cat));
     commandMap.insert(pair<string,FnPtr>("clear",clear));
+    commandMap.insert(pair<string,FnPtr>("chmod",chmod));
+    commandMap.insert(pair<string,FnPtr>("chown",chown));
+    commandMap.insert(pair<string,FnPtr>("chgrp",chgrp));
+    commandMap.insert(pair<string,FnPtr>("passwd",passwd));
+}
+
+
+int chgrp(vector<string> args){
+    cout<<"施工中"<<endl;
+    return 0;
+}
+int chown(vector<string> args){
+    cout<<"施工中"<<endl;
+    return 0;
+}
+
+
+//可以改变用户的密码
+//直接使用passwd可更改当前用户的密码
+//passwd + username可以更改 username的名字
+int passwd(vector<string> args){
+    if(args.size()==1){
+        cout<<"更改当前用户"<<currentUser.name<<"的密码"<<endl;
+        cout<<"请输入当前的密码 :";
+        string oldpass;
+        cin>>oldpass;
+        if(oldpass==currentUser.password){
+            cout<<"请输入新密码 :";
+            string pass1;
+            cin>>pass1;
+            cout<<"请再次输入密码 :";
+            string pass2;
+            cin>>pass2;
+            if(pass1==pass2){
+                strcpy(currentUser.password,pass1.c_str());
+                saveTopasswd(currentUser);
+                cout<<"密码修改成功"<<endl;
+            }else{
+                cout<<"密码不配"<<endl;
+            }
+        }else{
+            cout<<"密码错误"<<endl;
+        }
+    }else if(args.size()==2){
+    }else{
+        cout<<"命令格式错误"<<endl;
+    }
+
+
+    cin.clear();
+    cin.ignore();
+    return 0;
+}
+int chmod(vector<string> args){
+    cout<<"施工中"<<endl;
+    return 0;
 }
 
 //清屏
@@ -78,7 +138,7 @@ int cat(vector<string> args){
         }
 
     }
-
+    return 0;
 }
 
 

@@ -1,8 +1,6 @@
 #ifndef STRUCT_CPP_
 #define STRUCT_CPP_
-
 #include<time.h>
-
 
 //link node
 //成组链接法的链接节点,记录free数目,下一个组的起始位置,free block的下标
@@ -21,7 +19,6 @@ struct Superblock{
     Lnode blocks;//存放当前可用的
 };
 
-
 struct Block{
     char content[512];
 };
@@ -31,7 +28,6 @@ struct Directory{
     char name[14];  //文件名
     short int inode_id; //inode号
 };
-
 
 //Inode的结构
 struct Inode{
@@ -54,11 +50,9 @@ struct User{
     int  group_id;
 };
 
-
 struct Group{
     char name[16];
     int id;
-
 };
 
 #endif
