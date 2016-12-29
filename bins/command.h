@@ -67,9 +67,35 @@ void initCommands(){
     commandMap.insert(pair<string,FnPtr>("passwd",passwd));
 }
 
-
+//格式是 chgrp grpname filename
+//filename是当前目录下的文件,是路径的话可能存在不存在的情况
 int chgrp(vector<string> args){
     cout<<"施工中"<<endl;
+    if(args.size()!=3){
+        cout<<"格式错误"<<endl;
+        return 0;
+    }else{
+        string grpname=args[1];
+        string file=args[2];
+        int id=getInodeidFromDir(currentInode,file);
+        if(id==-1){
+            cout<<"该文件或者目录不存在"<<endl;
+        }else{
+            Inode node=readInode(id);
+            if(canI(node,currentUser,2)){
+                int group_id=getgroupid(grpname);
+                if(group_id==-1){
+                    cout<<"组名错误"<<endl;
+                }else{
+                    node.group_id=group_id;
+                    writeInode(node);
+                    cout<<"修改成功"<<endl;
+                }
+            }else{
+                cout<<"你没有权限写入"<<endl;
+            }
+        }
+    }
     return 0;
 }
 int chown(vector<string> args){
@@ -103,6 +129,7 @@ int passwd(vector<string> args){
             cout<<"密码错误"<<endl;
         }
     }else if(args.size()==2){
+        cout<<"施工中,尝试切换到某个账号在改变其密码"<<endl;
     }else{
         cout<<"命令格式错误"<<endl;
     }

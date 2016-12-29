@@ -24,6 +24,8 @@ int getFileAddress(Inode node,int i);
 void init_dir();//创建初始文件夹
 int touch(string path,string permission,int userid,int groupid);
 int saveTopasswd(User user);
+int saveToGroup(Group group);
+int getgroupid(string grpname);
 int leagleUser(User user);
 bool canI(Inode node,User user,int action);//用于权限的鉴定
 //dir是一个文件夹,需要其他的参数写在参数里面
@@ -79,6 +81,18 @@ void init_dir(){
     richard.group_id=0;
     saveTopasswd(root);//作为一个特殊的函数
     saveTopasswd(richard);
+
+    //保存组名对象group_id
+    touch("/etc/groups","frwx------",0,0);//只有root管理员用户组才可以查看,不保存字符串,直接用二进制保存用户信息,方便使用
+
+    Group admin;
+    strcpy(admin.name,"admin");
+    admin.id=0;
+    Group guest;
+    strcpy(guest.name,"guest");
+    guest.id=1;
+    saveToGroup(admin);
+    saveToGroup(guest);
 }
 
 //新建一个文件夹
@@ -496,7 +510,6 @@ void traverse_ls(Inode node,dirFun func ,User user){
     }
 }
 string getPath(Inode node){
-
     Superblock spb=getSuperBlock();
     if(node.inode_id==spb.root_inode)
         return "/";
@@ -530,5 +543,57 @@ bool canI(Inode node,User user,int action){//用于权限的鉴定
             return true;
     }
     return false;
+}
+
+int saveToGroup(Group group){
+    string path="/etc/groups";
+    Inode node=getInode(path);
+    if(node.filesize==0){
+        int pos=node.blockaddress[0];
+        opendisk();
+        fs.seekp(pos*sizeof(Block),ios_base::beg);
+        fs.write((char *)&group,sizeof(group));
+        fs.close();
+        node.filesize=node.filesize+sizeof(Group);
+        writeInode(node);
+        return 0;
+    }else{//遍历,如果已有则更新,没有则在末尾添加
+        unsigned int i=0;
+        int pos=node.blockaddress[0];
+        opendisk();
+        fs.seekp(pos*sizeof(Block),ios_base::beg);
+        for(;i<node.filesize/sizeof(Group);i++){
+            Group temp;
+            fs.read((char*)&temp,sizeof(temp));
+            if(temp.name==group.name){
+                fs.seekp(-sizeof(Group),ios_base::cur);
+                fs.write((char *)&group,sizeof(group));
+                break;
+            }
+        }
+        if(i==node.filesize/sizeof(Group)){
+            fs.write((char *)&group,sizeof(Group));
+            node.filesize+=sizeof(Group);
+        }
+        closedisk();
+        writeInode(node);
+        return i;
+    }
+}
+int getgroupid(string grpname){
+    Inode node=getInode("/etc/groups");
+    int group_amount=node.filesize/sizeof(Group);
+    for(int i=0;i<group_amount;i++){
+        int address=getFileAddress(node,i*sizeof(Group));
+        opendisk();
+        fs.seekg(address,ios_base::beg);
+        Group temp;
+        fs.read((char *)&temp,sizeof(temp));
+        closedisk();
+        string name=temp.name;
+        if(name==grpname)
+            return temp.id;
+    }
+    return -1;
 }
 #endif
