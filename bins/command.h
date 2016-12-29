@@ -70,7 +70,6 @@ void initCommands(){
 //格式是 chgrp grpname filename
 //filename是当前目录下的文件,是路径的话可能存在不存在的情况
 int chgrp(vector<string> args){
-    cout<<"施工中"<<endl;
     if(args.size()!=3){
         cout<<"格式错误"<<endl;
         return 0;
@@ -98,11 +97,40 @@ int chgrp(vector<string> args){
     }
     return 0;
 }
+
+//格式类似于chgrp
+//只能引用于当前文件夹
+//TODO让其支持绝对路径和相对路径
+
 int chown(vector<string> args){
+    // chown root filename
     cout<<"施工中"<<endl;
+    if(args.size()!=3){
+        cout<<"格式错误"<<endl;
+    }else{
+        string usrname=args[1];
+        string file=args[2];
+        int id=getInodeidFromDir(currentInode,file);
+        if(id==-1){
+            cout<<"该文件不存在"<<endl;
+        }else{
+            Inode node=readInode(id);
+            if(canI(node,currentUser,2)){
+                int id=getUserId(usrname);
+                if(id==-1){
+                    cout<<"此用户名"<<endl;
+                }else{
+                    node.user_id=id;
+                    writeInode(node);
+                    cout<<"修改成功"<<endl;
+                }
+            }else{
+                cout<<"你没有修改的权限"<<endl;
+            }
+        }
+    }
     return 0;
 }
-
 
 //可以改变用户的密码
 //直接使用passwd可更改当前用户的密码
@@ -179,7 +207,6 @@ int cat(vector<string> args){
     }
     return 0;
 }
-
 
 //touch如果没有此文件则创建一个空文件,如果有此文件则更新其时间戳
 //touch name

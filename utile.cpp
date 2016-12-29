@@ -26,6 +26,7 @@ int touch(string path,string permission,int userid,int groupid);
 int saveTopasswd(User user);
 int saveToGroup(Group group);
 int getgroupid(string grpname);
+int getUserId(string usrname);
 int leagleUser(User user);
 bool canI(Inode node,User user,int action);//用于权限的鉴定
 //dir是一个文件夹,需要其他的参数写在参数里面
@@ -593,6 +594,26 @@ int getgroupid(string grpname){
         string name=temp.name;
         if(name==grpname)
             return temp.id;
+    }
+    return -1;
+}
+
+//得到用户名对应的id
+//如果没有找到的话就返回-1
+int getUserId(string usrname){
+    Inode node=getInode("/etc/passwd");
+    int user_amount=node.filesize/sizeof(User);
+    for(int i=0;i<user_amount;i++){
+        int address=getFileAddress(node,i*sizeof(User));
+        opendisk();
+        fs.seekg(address,ios_base::beg);
+        User temp;
+        fs.read((char *)&temp,sizeof(temp));
+        closedisk();
+        string name=temp.name;
+        if(name==usrname){
+            return temp.user_id;
+        }
     }
     return -1;
 }
