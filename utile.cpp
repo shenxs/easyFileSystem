@@ -17,10 +17,12 @@ using namespace std;
 
 //================函数申明=======================================
 int mkdir(string path,string permission,int userid ,int groupid);
+void rmChildFromDir(Inode node,string file);
 Inode getInode(string path);
 Inode getInode(Inode parent,string path);
 string getPath(Inode node);
 int getFileAddress(Inode node,int i);
+void reduceFilesize(Inode node,int i);
 void init_dir();//创建初始文件夹
 int touch(string path,string permission,int userid,int groupid);
 int saveTopasswd(User user);
@@ -617,4 +619,49 @@ int getUserId(string usrname){
     }
     return -1;
 }
+
+//将一个子项目文件或者文件夹或者链接从父目录中删除
+//注意并不删除文件内容只是将文件inde_id和文件项目从父目录中删除
+//不可以删除 . ..
+void rmChildFromDir(Inode node,string file){
+    if(node.permissions[0]!='d'){
+        cout<<"这不是一个文件夹"<<endl;
+    }else{
+        if(file=="."||file==".."){
+            cout<<"不可以删除"<<file<<",请直接删除文件夹"<<endl;
+            return;
+        }else{
+            int dirs=node.filesize/sizeof(Directory);
+            for(int i=0;i<dirs;i++){
+                Directory temp;
+                int address=getFileAddress(node,i*sizeof(Directory));
+                opendisk();
+                fs.seekg(address,ios_base::beg);
+                fs.read((char*)&temp,sizeof(temp));
+
+                string name=temp.name;
+                if(name==file){
+                    //找到了
+                    if(i!=dirs-1){
+                        //不是最后一个文件夹那么直接将最后一个文件夹填到此处
+                    }
+
+                    //TODO
+                    //改变文件的大小
+
+                    return;
+                }
+            }
+            cout<<"没找到此文件"<<endl;
+        }
+    }
+}
+
+//减小一个文件的大小,i代表从后往前数删除的字节数;
+void reduceFilesize(Inode node,int i){
+    //如果没有到一个块的边界那么只是将filesize减1
+    //如果到达边界那么还需要考虑归还一个块,并且将索引设置正确,
+    //如果正好索引块也不再使用那么将索引块也需要归还
+}
+
 #endif

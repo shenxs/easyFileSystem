@@ -20,6 +20,7 @@ Inode readInode(int index);
 User  readUser(int pos);
 int writeInode(Inode an_inode);
 int addInode(Inode inode);
+int rmInode(int id);
 Superblock getSuperBlock();
 int writeSuperBlock(Superblock spb);
 int addChild2Dir(Inode parent_node,string childname,int inode_id);
@@ -61,13 +62,25 @@ Inode readInode(int index){
 
 //将一个Inode写回磁盘,如果成功则返回0
 int writeInode(Inode an_inode){
-    fs.open(diskname.c_str(),ios_base::out|ios_base::in|ios_base::binary);
+    opendisk();
     fs.seekp(2*sizeof(Block)+an_inode.inode_id*sizeof(an_inode),ios_base::beg);
     fs.write((char*)&an_inode,sizeof(an_inode));
-    fs.close();
+    closedisk();
     return 0;
 }
 
+int rmInode(int id){
+    Inode temp;
+    temp.inode_id=-1;
+    opendisk();
+    fs.seekp(2*sizeof(Block)+id*sizeof(Inode),ios_base::beg);
+    fs.write((char *)&temp,sizeof(temp));
+    closedisk();
+    Superblock spb=getSuperBlock();
+    spb.inode_usered--;
+    writeSuperBlock(spb);
+    return 0;
+}
 Superblock getSuperBlock(){
     Superblock spb;
     opendisk();
@@ -91,12 +104,24 @@ int addInode(Inode inode){
     //如果添加失败则返回-1
     //inode的id通过遍历inode节点来判断因为inode可能会被删除,造成间断
     Superblock spb=getSuperBlock();
-    int current=spb.inode_usered;
-    if(current>=spb.inode_number){
+    int id=-1;
+    for(int i=0;i<spb.inode_number;i++){
+        opendisk();
+        Inode temp;
+        fs.seekg(2*sizeof(Block)+i*sizeof(Inode),ios_base::beg);
+        fs.read((char *)&temp,sizeof(temp));
+        closedisk();
+        if(temp.inode_id==-1){
+            cout<<i<<endl;
+            id=i;
+            break;
+        }
+    }
+    if(id==-1){
         return -1;
         //说明已经不能添加新的inode了
     }
-    inode.inode_id=current;
+    inode.inode_id=id;
     spb.inode_usered++;
     writeSuperBlock(spb);
     writeInode(inode);

@@ -50,13 +50,11 @@ void init_fs(){
 
     //存放inode数组
     Inode an_inode;
+    an_inode.inode_id=-1;//一开始初始化为-1 说明此块没有被使用
     fs.seekp(2*sizeof(Block),ios_base::beg);
-
     int inode_number=(data_start-2)*block_size/sizeof(Inode);
-
     for(int i=0;i<inode_number;i++)
     {
-        an_inode.inode_id=i;
         fs.write((char*)&an_inode,sizeof(an_inode));
     }
 

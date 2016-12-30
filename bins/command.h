@@ -381,6 +381,8 @@ int ls(vector<string> args){
 int cd(vector<string> args){
     //遍历文件项,返回指定的inode的编号
     //修改pwd
+    if(args.size()==1)
+        return 0;
     string path=args[1];
     // Inode node=getInode(PWD);
     if(path[0]=='/')//绝对路径
