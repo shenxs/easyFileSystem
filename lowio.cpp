@@ -26,6 +26,8 @@ int writeSuperBlock(Superblock spb);
 int addChild2Dir(Inode parent_node,string childname,int inode_id);
 int getaFreeBlockAddress();
 void writeDir(int pos,Directory dir);
+int getFileAddress(Inode node,int i);
+void reduceFilesize(Inode node,int i);
 //===============================================================
 
 
@@ -69,6 +71,8 @@ int writeInode(Inode an_inode){
     return 0;
 }
 
+//将某个Inode删除,并不删除其文件内容只是将inode的id设置为-1
+//顺便spb中已经使用的Inode的大小也减1
 int rmInode(int id){
     Inode temp;
     temp.inode_id=-1;
@@ -112,7 +116,6 @@ int addInode(Inode inode){
         fs.read((char *)&temp,sizeof(temp));
         closedisk();
         if(temp.inode_id==-1){
-            cout<<i<<endl;
             id=i;
             break;
         }
@@ -137,145 +140,19 @@ int addChild2Dir(Inode parent_node,string childname,int inode_id){
     child.inode_id=inode_id;
     strcpy(child.name,childname.c_str());
     //找到parent对应文件的末尾
-    short int block_index=0;//文件末尾所在的块号
-    int pianyi=0;//文件末尾对应的块号的偏移量
-    if(parent_node.blocknum<=3){
-        //直接地址,如果已经满了,下一块还是直接地址
-        //如果当前块放不下一个目录项了
-        pianyi=parent_node.filesize%sizeof(Block);
-        if(pianyi==0){
-            //重新申请一块空闲的地址
-            int new_block_address=getaFreeBlockAddress();
-            parent_node.blockaddress[parent_node.blocknum]=new_block_address;
-            parent_node.blocknum++;
-            block_index=new_block_address;
-            pianyi=0;
-        }else{
-            //直接使用现有的地址
-            block_index=parent_node.blockaddress[parent_node.blocknum-1];
-            pianyi=parent_node.filesize%sizeof(Block);
-        }
-    }else if(parent_node.blocknum==4){
-        block_index=parent_node.blocknum-1;
-        pianyi=parent_node.filesize%sizeof(Block);
-        if((sizeof(Block)-pianyi)<sizeof(Directory)or pianyi==0){
-            //重新申请一块空闲的地址
-            short int new_address=getaFreeBlockAddress();
-            parent_node.blocknum++;
-            parent_node.blockaddress[4]=new_address;
-            short int store_address=getaFreeBlockAddress();
-
-            fs.open(diskname.c_str(),ios_base::in|ios_base::out|ios_base::binary);
-            fs.seekp(new_address,ios_base::beg);
-            fs.write((char*)&store_address,sizeof(store_address));
-            block_index=store_address;
-            pianyi=0;
-        }else{
-            //直接使用现有的地址
-            block_index=parent_node.blockaddress[parent_node.blocknum-1];
-            pianyi=parent_node.filesize%sizeof(Block);
-        }
-    }else if(parent_node.blocknum>=5&&parent_node.blocknum<(4+addressNumber)){
-        //一级间接地址
-        if(parent_node.filesize%sizeof(Block)==0){
-            //已经满了,需要一个新的块
-            short int store_address=getaFreeBlockAddress();
-            parent_node.blocknum++;
-            fs.open(diskname.c_str(),ios_base::in|ios_base::out|ios_base::binary);
-            fs.seekp(parent_node.blockaddress[4]+sizeof(short int)*(parent_node.blocknum-4),ios_base::beg);
-            fs.write((char *)&store_address,sizeof(store_address));
-            block_index=store_address;
-            pianyi=0;
-        }else{
-            fs.open(diskname.c_str(),ios_base::in|ios_base::out|ios_base::binary);
-            fs.seekg(parent_node.blockaddress[4]*sizeof(Block)+(parent_node.blocknum-5)*sizeof(short int),ios_base::beg);
-            fs.read((char*)&block_index,sizeof(block_index));
-            pianyi=parent_node.filesize%sizeof(Block);
-        }
-
-
-    }else if(parent_node.blocknum==(4+(sizeof(Block)/sizeof(short int)))){//第一间接地址即将用完的情况
-        if(parent_node.filesize%(sizeof(Block))==0){
-            //已经用完一级间接地址,启用第二间接地址
-
-            short int first_address=getaFreeBlockAddress();
-            parent_node.blockaddress[5]=first_address;
-            fs.open(diskname.c_str(),ios_base::in|ios_base::out|ios_base::binary);
-            fs.seekp(first_address*sizeof(Block),ios_base::beg);
-            short int second_address=getaFreeBlockAddress();
-            fs.write((char *)&second_address,sizeof(second_address));
-            short int third_address=getaFreeBlockAddress();
-            fs.seekp(second_address*sizeof(Block),ios_base::beg);
-            fs.write((char *)&third_address,sizeof(third_address));
-
-            block_index=third_address;
-            pianyi=0;
-        }else{//是一级间接地址的最后一块了
-            fs.open(diskname.c_str(),ios_base::in|ios_base::out|ios_base::binary);
-            fs.seekg(parent_node.blockaddress[4]*sizeof(Block)+(parent_node.blocknum-5)*sizeof(short int),ios_base::beg);
-            fs.read((char*)&block_index,sizeof(block_index));
-            pianyi=parent_node.filesize%sizeof(Block);
-        }
-    }else if(parent_node.blocknum>(4+addressNumber)
-            and parent_node.blocknum<(4+addressNumber+addressNumber*addressNumber)){//已经二级索引了
-        if(parent_node.filesize%sizeof(Block)==0){//如果是二级索引,需要一个新的block
-            fs.open(diskname.c_str(),ios_base::in|ios_base::out|ios_base::binary);
-            short int first_address=parent_node.blockaddress[5];
-
-            int p1=(parent_node.blocknum-4-addressNumber)/ addressNumber;
-            int p2=(parent_node.blocknum-4-addressNumber)% addressNumber;
-            if(p2==0)//需要一个新的二级索引
-            {
-                short int new_first=getaFreeBlockAddress();
-                fs.seekp(first_address*sizeof(Block)+p1*sizeof(short int),ios_base::beg);
-                fs.write((char *)&new_first,sizeof(new_first));
-                fs.seekp(new_first*sizeof(Block),ios_base::beg);
-                short int real_address=getaFreeBlockAddress();
-                fs.write((char*)&real_address,sizeof(real_address));
-                block_index=real_address;
-                pianyi=0;
-                parent_node.blocknum++;
-            }else{
-                //在对应的二级索引里面添加一个新的项目就可以了
-                short int real_address=getaFreeBlockAddress();
-                fs.seekg(first_address*sizeof(Block)+(p1-1)*sizeof(short int),ios_base::beg);
-                short second_address;
-                fs.read((char*)&second_address,sizeof(second_address));
-                fs.seekp(second_address*sizeof(Block)+p2,ios_base::beg);
-                fs.write((char *)&real_address,sizeof(real_address));
-
-                block_index=real_address;
-                pianyi=0;
-            }
-
-        }else{
-            int addressNumber=(sizeof(Block))/sizeof(short int);//一个块可以存放多少的地址项
-            fs.open(diskname.c_str(),ios_base::in|ios_base::out|ios_base::binary);
-
-            short int first_address=parent_node.blockaddress[5];
-            int p1=(parent_node.blocknum-4-addressNumber)/ addressNumber;
-            fs.seekg(first_address*sizeof(Block)+p1*sizeof(short int),ios_base::beg);
-            short int second_address;
-            fs.read((char* )&second_address,sizeof(second_address));
-
-            int p2=(parent_node.blocknum-4-addressNumber)% addressNumber;
-            fs.seekg(second_address*sizeof(Block)+p2*sizeof(short int),ios_base::beg);
-            short int real_address;
-            fs.read((char*)&real_address,sizeof(real_address));
-
-            block_index=real_address;
-            pianyi=parent_node.filesize%sizeof(Block);
-        }
-
-    }else{
-        cout<<"未知错误"<<endl;
+    int address=getFileAddress(parent_node,parent_node.filesize);
+    cout<<address<<endl;
+    if(address==-1){
         return -1;
+    }else{
+        opendisk();
+        fs.seekp(address,ios_base::beg);
+        fs.write((char*)&child,sizeof(child));
+        closedisk();
+        parent_node.filesize+=sizeof(child);
+        writeInode(parent_node);
+        return address;
     }
-    fs.close();
-    parent_node.filesize+=sizeof(child);
-    writeInode(parent_node);
-    writeDir(block_index*sizeof(Block)+pianyi,child);
-    return block_index*sizeof(Block)+pianyi;
 }
 
 //返回一个可用的空闲块,如果没有空闲块则返回-1
@@ -340,4 +217,187 @@ User readUser(int pos){
     closedisk();
     return temp;
 }
+
+//一个文件夹就像是放着好多目录项的一个数组,此函数将原本不连续的
+//文件地址变成简单连续的地址,i即一个文件夹中的第几个文件项,下表从0开始
+//如果没有则返回的地址为-1
+//返回的是目录项在磁盘上的位置
+//链表需要存储前后的地址,又浪费空间,也不能利用间隔
+//文件内部是连续的,文件夹删除的时候要将空闲区用最后个文件项填补上
+//node 代表一个文件,i是抽象的,将文件看做连续分配后相对起始位置的偏移量
+//抽象之后可以连续的使用文件,不用关心底层的存储
+int getFileAddress(Inode node ,int i){
+    //这是一种函数映射关系,将抽象的地址转换为实际的地址
+    //从0个字节开始
+    //如果访问到filesize并且是一个块已经结束则分配一个新的块
+    if(i>node.filesize||i<0){
+        return -1;
+    }else
+    {
+        short block_index,pianyi;//磁盘块号和盘内偏移量
+        //直接地址
+        pianyi=i%sizeof(Block);
+        if(i<4*sizeof(Block)){
+            //直接地址
+            int index=i/sizeof(Block);
+            if(i==node.filesize&&pianyi==0){
+                //遇到末尾
+                block_index=node.blockaddress[index];
+                if(block_index<data_start||block_index>block_number){
+                    //所获得的地址不是一个有效的地址
+                    node.blockaddress[index]=getaFreeBlockAddress();
+                    node.blocknum++;
+                    writeInode(node);
+                    block_index=node.blockaddress[index];
+                }
+            }else{
+                block_index=node.blockaddress[index];
+            }
+        }else if(i<4*sizeof(Block)+addressNumber*sizeof(Block)){
+            //一级间接
+            int index=4;
+            if(i==node.filesize&&pianyi==0){
+                //遇到访问文件末尾的情况,且文件正好用完一个块
+                int a1=node.blockaddress[index];
+                if(a1<data_start||a1>block_number){
+                    //如果blockaddress4中存放的是无效地址
+                    short temp=getaFreeBlockAddress();
+                    node.blockaddress[4]=temp;
+                    temp=getaFreeBlockAddress();
+                    opendisk();
+                    fs.seekp(node.blockaddress[4]*sizeof(Block),ios_base::beg);
+                    fs.write((char *)&temp,sizeof(temp));
+                    closedisk();
+                    node.blocknum++;
+                    writeInode(node);
+                    block_index=temp;
+                }else{
+                    //address[4]中有地址
+                    short temp;
+                    int p1=(i/sizeof(Block))-4;
+                    opendisk();
+                    fs.seekg(a1*sizeof(Block)+p1*sizeof(short),ios_base::beg);
+                    fs.read((char *)&temp,sizeof(temp));
+                    closedisk();
+                    if(temp<data_start||temp>block_number)
+                    {
+                        temp=getaFreeBlockAddress();
+                        opendisk();
+                        fs.seekp(a1*sizeof(Block)+p1*sizeof(short),ios_base::beg);
+                        fs.write((char*)&temp,sizeof(temp));
+                        closedisk();
+                        node.blocknum++;
+                        writeInode(node);
+                    }
+                    block_index=temp;
+                }
+            }else{
+                //普通的情况,访问的不是文件末尾或者是文件末尾但不是block末尾
+                index=node.blockaddress[index];
+                int p1=(i/sizeof(Block))-4;
+                opendisk();
+                fs.seekg(index*sizeof(Block)+p1*sizeof(short),ios_base::beg);
+                fs.read((char *)&block_index,sizeof(block_index));
+                closedisk();
+            }
+        }else if(i<4*sizeof(Block)+
+                addressNumber*sizeof(Block)
+                +addressNumber*addressNumber*sizeof(Block)){
+            //二级间接
+            short index=5;
+            short a1=node.blockaddress[index];
+            if(i==node.filesize&&pianyi==0){
+                //需要加入新的块的情况应该有3种
+                if(a1<data_start||a1>block_number){
+                    //从直接索引开始新建
+                    short temp=getaFreeBlockAddress();
+                    node.blockaddress[5]=temp;
+                    temp=getaFreeBlockAddress();
+                    opendisk();
+                    fs.seekp(node.blockaddress[5]*sizeof(Block),ios_base::beg);
+                    fs.write((char*)&temp,sizeof(temp));
+                    closedisk();
+                    short temp2=getaFreeBlockAddress();
+                    opendisk();
+                    fs.seekp(temp*sizeof(Block),ios_base::beg);
+                    fs.write((char*)&temp2,sizeof(temp2));
+                    closedisk();
+                    node.blocknum++;
+                    writeInode(node);
+                    block_index=temp2;
+                }else{
+                    //直接索引有效,检查是否需要一级索引
+                    //先读出一级索引
+                    int x=((i/(sizeof(Block)))-4-addressNumber)/addressNumber;
+                    short a2;
+                    opendisk();
+                    fs.seekg(sizeof(Block)*a1+x*sizeof(short),ios_base::beg);
+                    fs.read((char*)&a2,sizeof(a2));
+                    closedisk();
+                    if(a2<data_start||a2>block_number){
+                        //如果a2无效的话
+                        a2=getaFreeBlockAddress();
+                        opendisk();
+                        fs.seekp(sizeof(Block)*a1+x*sizeof(short),ios_base::beg);
+                        fs.write((char*)&a2,sizeof(a2));
+                        closedisk();
+                        short a3=getaFreeBlockAddress();
+                        opendisk();
+                        fs.seekp(a2*sizeof(Block),ios_base::beg);
+                        fs.write((char*)&a3,sizeof(a3));
+                        closedisk();
+                        node.blocknum++;
+                        writeInode(node);
+                        block_index=a3;
+                    }else{
+                        //a2有效,读出a3
+                        int y=((i/sizeof(Block))-4-addressNumber)%addressNumber;
+                        short a3;
+                        opendisk();
+                        fs.seekg(a2*sizeof(Block)+y*sizeof(short),ios_base::beg);
+                        fs.read((char*)&a3,sizeof(a3));
+                        closedisk();
+                        if(a3<data_start||a3>block_number){
+                            //a3无效,需要新建一个块
+                            a3=getaFreeBlockAddress();
+                            opendisk();
+                            fs.seekp(a2*sizeof(Block)+y*sizeof(short),ios_base::beg);
+                            fs.write((char*)&a3,sizeof(a3));
+                            closedisk();
+                            node.blocknum++;
+                            writeInode(node);
+                            block_index=a3;
+                        }else{
+                            block_index=a3;
+                        }
+                    }
+                }
+            }else{
+                int x=((i/(sizeof(Block)))-4-addressNumber)/addressNumber;
+                int y=((i/sizeof(Block))-4-addressNumber)%addressNumber;
+                opendisk();
+                fs.seekg(index*sizeof(Block)+x*sizeof(short),ios_base::beg);
+                fs.read((char*)&index,sizeof(index));
+                fs.seekg(index*sizeof(Block)+y*sizeof(short),ios_base::beg);
+                fs.read((char *)sizeof(block_index),sizeof(block_index));
+                closedisk();
+            }
+        }else{
+            cout<<"超出文件系统所允许的最大的文件大小"<<endl;
+        }
+        int result=block_index*sizeof(Block)+pianyi;
+        return result;
+    }
+}
+
+
+//减小一个文件的大小,i代表从后往前数删除的字节数;
+void reduceFilesize(Inode node,int i){
+    //如果没有到一个块的边界那么只是将filesize减1
+    //如果到达边界那么还需要考虑归还一个块,并且将索引设置正确,
+    //如果正好索引块也不再使用那么将索引块也需要归还
+}
+
+
+
 #endif
