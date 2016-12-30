@@ -104,7 +104,6 @@ int chgrp(vector<string> args){
 
 int chown(vector<string> args){
     // chown root filename
-    cout<<"施工中"<<endl;
     if(args.size()!=3){
         cout<<"格式错误"<<endl;
     }else{
@@ -164,7 +163,79 @@ int passwd(vector<string> args){
     return 0;
 }
 int chmod(vector<string> args){
-    cout<<"施工中"<<endl;
+    //参数 chmod 777/444/ file
+    if(args.size()!=3){
+        cout<<"格式错误"<<endl;
+    }else{
+        string newmod=args[1];
+        int moduser=(newmod[0]-('7'-7));
+        int modegrp=(newmod[1]-('7'-7));
+        int modeotr=(newmod[2]-('7'-7));
+        cout<<"newmod="<<moduser<<modegrp<<modeotr<<endl;
+        string file=args[2];
+        string mode="";
+        int id=getInodeidFromDir(currentInode,file);
+        if(id==-1){
+            cout<<file<<"不存在"<<endl;
+        }else{
+            Inode node=readInode(id);
+            if(canI(node,currentUser,2)){
+                int b=1;
+                for(int i=0;i<3;i++){
+                    if(modeotr&(1<<i)){
+                        if(b==1){
+                            mode="x"+mode;
+                        }else if(b==2){
+                            mode="w"+mode;
+                        }else{
+                            mode="r"+mode;
+                        }
+                    }else{
+                        mode="-"+mode;
+                    }
+                    b++;
+                }
+                b=1;
+                for(int i=0;i<3;i++){
+                    if(modegrp&(1<<i)){
+                        if(b==1){
+                            mode="x"+mode;
+                        }else if(b==2){
+                            mode="w"+mode;
+                        }else{
+                            mode="r"+mode;
+                        }
+                    }else{
+                        mode="-"+mode;
+                    }
+                    b++;
+                }
+                b=1;
+                for(int i=0;i<3;i++){
+                    if(moduser&(1<<i)){
+                        if(b==1){
+                            mode="x"+mode;
+                        }else if(b==2){
+                            mode="w"+mode;
+                        }else{
+                            mode="r"+mode;
+                        }
+                    }else{
+                        mode="-"+mode;
+                    }
+                    b++;
+                }
+
+                mode=node.permissions[0]+mode;
+                strcpy(node.permissions,mode.c_str());
+                writeInode(node);
+                cout<<"修改成功"<<endl;
+            }else{
+                cout<<"对不起你没有此权限"<<endl;
+            }
+        }
+
+    }
     return 0;
 }
 
