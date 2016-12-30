@@ -25,7 +25,9 @@ Superblock getSuperBlock();
 int writeSuperBlock(Superblock spb);
 int addChild2Dir(Inode parent_node,string childname,int inode_id);
 int getaFreeBlockAddress();
+void freeBlock(int n);
 void writeDir(int pos,Directory dir);
+void writeLnode(int pos,Lnode lnode);
 int getFileAddress(Inode node,int i);
 void reduceFilesize(Inode node,int i);
 //===============================================================
@@ -141,14 +143,10 @@ int addChild2Dir(Inode parent_node,string childname,int inode_id){
     strcpy(child.name,childname.c_str());
     //找到parent对应文件的末尾
     int address=getFileAddress(parent_node,parent_node.filesize);
-    cout<<address<<endl;
     if(address==-1){
         return -1;
     }else{
-        opendisk();
-        fs.seekp(address,ios_base::beg);
-        fs.write((char*)&child,sizeof(child));
-        closedisk();
+        writeDir(address,child);
         parent_node.filesize+=sizeof(child);
         writeInode(parent_node);
         return address;
@@ -176,14 +174,14 @@ int getaFreeBlockAddress(){
             for(int i=0;i<100;i++){
                 a_lnode.blocks[i]=spb.blocks.blocks[i];
             }
+            writeLnode(sizeof(Block)*(spb.blocks.next_adress-100),a_lnode);
+
             opendisk();
-            fs.seekp(sizeof(Block)*(spb.blocks.next_adress-100),ios_base::beg);
-            fs.write((char *)&a_lnode,sizeof(a_lnode));
             //将下一组的自由块的Lnode装入spb
             fs.seekp(sizeof(Block)*spb.blocks.next_adress,ios_base::beg);
             fs.read((char *) &a_lnode,sizeof(a_lnode));
-
             closedisk();
+
             spb.blocks.free=a_lnode.free;
             spb.blocks.next_adress=a_lnode.next_adress;
             for(int i=0;i<100;i++){
@@ -199,6 +197,28 @@ int getaFreeBlockAddress(){
         return -1;
     }
 }
+
+//释放一个块,将其存放到可用的
+void freeBlock(int n){
+    Superblock spb=getSuperBlock();
+    Lnode lnode=spb.blocks;
+    if(lnode.free<100){
+        lnode.blocks[lnode.free]=n;
+        lnode.free++;
+        spb.blocks=lnode;
+    }else{
+        //当前已经有100个可以使用的block了,将其写回
+        //spb中可以新建一个block,初始为0
+        writeLnode(sizeof(Block)*(lnode.next_adress-100),lnode);
+        Lnode new_lnode;
+        new_lnode.next_adress=lnode.next_adress-100;
+        new_lnode.free=2;
+        new_lnode.blocks[new_lnode.free-1]=n;
+        spb.blocks=new_lnode;
+    }
+        writeSuperBlock(spb);
+}
+
 
 //将某个目录项写到pos所指的地方
 void writeDir(int pos, Directory dir){
@@ -390,14 +410,56 @@ int getFileAddress(Inode node ,int i){
     }
 }
 
+//将链接节点写回
+void writeLnode(int pos,Lnode lnode){
+    opendisk();
+    fs.seekp(pos,ios_base::beg);
+    fs.write((char *)&lnode,sizeof(lnode));
+    closedisk();
+}
+
+//将文件的大小减小一个字节
+void reduceFilesizeBy1byte(Inode node){
+    if(node.filesize==0)
+        return;
+    else{
+        int pianyi=node.filesize%sizeof(Block);
+        if(pianyi!=1){
+            //删除字节后并不需要修改索引
+            node.filesize--;
+            writeInode(node);
+            return;
+        }else{
+            //释放节点
+            //释放索引节
+            //修改node的blocknumber
+            if(node.filesize<4*sizeof(Block)){
+                node.filesize--;
+                int tofree=node.filesize/sizeof(Block);
+                freeBlock(node.blockaddress[tofree]);
+                node.blockaddress[tofree]=0;
+            }
+
+
+
+        }
+    }
+}
 
 //减小一个文件的大小,i代表从后往前数删除的字节数;
 void reduceFilesize(Inode node,int i){
-    //如果没有到一个块的边界那么只是将filesize减1
+    //如果没有到一个块的边界那么只是将filesize减去相应的
     //如果到达边界那么还需要考虑归还一个块,并且将索引设置正确,
     //如果正好索引块也不再使用那么将索引块也需要归还
+
+    if(node.filesize<i){
+        cout<<"超出文件大小"<<endl;
+        return;
+    }else{
+        for(int j=0;j<i;j++){
+            reduceFilesizeBy1byte(node);
+        }
+    }
 }
-
-
 
 #endif
