@@ -434,13 +434,72 @@ void reduceFilesizeBy1byte(Inode node){
             //释放索引节
             //修改node的blocknumber
             if(node.filesize<4*sizeof(Block)){
-                node.filesize--;
                 int tofree=node.filesize/sizeof(Block);
+                int a1=node.blockaddress[tofree];
+                opendisk();
+                fs.seekg(a1*sizeof(Block),ios_base::beg);
+                char c=0;
+                fs.write((char*)&c,sizeof(c));
+                closedisk();
+
                 freeBlock(node.blockaddress[tofree]);
+                node.blocknum--;
                 node.blockaddress[tofree]=0;
+                node.filesize--;
+                writeInode(node);
+                return;
+            }else if(node.filesize<4*sizeof(Block)+addressNumber*sizeof(Block)){
+                //一级索引
+                int x=(node.filesize/sizeof(Block))-4;
+                if(x==1){
+                    //需要删除一级索引块
+                    int a=node.blockaddress[4];
+                    opendisk();
+                    fs.seekp(a*sizeof(Block),ios_base::beg);
+                    short a1;
+                    fs.read((char*)&a1,sizeof(a1));
+                    fs.seekp(a1*sizeof(Block),ios_base::beg);
+                    char c=0;
+                    fs.write((char *)&c,sizeof(c));
+                    short d=0;
+                    fs.seekp(a*sizeof(Block),ios_base::beg);
+                    fs.write((char*)&d,sizeof(d));
+                    closedisk();
+                    freeBlock(a1);
+                    freeBlock(a);
+                    node.blocknum--;
+                    node.blockaddress[4]=0;
+                    node.filesize--;
+                    writeInode(node);
+                }else{
+                    //只是将索引块中的一项地址修改
+                    int a=node.blockaddress[4];
+                    opendisk();
+                    fs.seekg(a*sizeof(Block)+x*sizeof(short),ios_base::beg);
+                    short a1;
+                    fs.read((char*)&a1,sizeof(a1));
+                    short temp=0;
+                    fs.seekp(-(sizeof(short)),ios_base::cur);
+                    fs.write((char*)&temp,sizeof(temp));
+                    fs.seekp(a1*sizeof(Block),ios_base::beg);
+                    char c=0;
+                    fs.write((char *)&c,sizeof(c));
+                    closedisk();
+                    freeBlock(a1);
+                    node.filesize--;
+                    node.blocknum--;
+                    writeInode(node);
+                }
+            }else if(node.filesize<4*sizeof(Block)+addressNumber*sizeof(Block)+addressNumber*addressNumber*sizeof(Block)){
+                //三级索引
+                int x=((node.filesize/(sizeof(Block)))-4-addressNumber)/addressNumber;
+                int y=((node.filesize/sizeof(Block))-4-addressNumber)%addressNumber;
+                int a1=node.blockaddress[5];
+                short a2,a3;
+                opendisk();
+                fs.seekg(sizeof(Block)*a1+x*sizeof(short),ios_base::beg);
+
             }
-
-
 
         }
     }
@@ -451,12 +510,12 @@ void reduceFilesize(Inode node,int i){
     //如果没有到一个块的边界那么只是将filesize减去相应的
     //如果到达边界那么还需要考虑归还一个块,并且将索引设置正确,
     //如果正好索引块也不再使用那么将索引块也需要归还
-
     if(node.filesize<i){
         cout<<"超出文件大小"<<endl;
         return;
     }else{
         for(int j=0;j<i;j++){
+            node=readInode(node.inode_id);
             reduceFilesizeBy1byte(node);
         }
     }
