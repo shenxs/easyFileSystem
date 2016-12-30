@@ -138,7 +138,6 @@ int passwd(vector<string> args){
     if(args.size()==1){
         cout<<"更改当前用户"<<currentUser.name<<"的密码"<<endl;
         cout<<"请输入当前的密码 :";
-        // cin.clear();
         string oldpass=getpasswdfromcin();
         if(oldpass==currentUser.password){
             cout<<"请输入新密码 :";
@@ -225,7 +224,6 @@ int chmod(vector<string> args){
                     }
                     b++;
                 }
-
                 mode=node.permissions[0]+mode;
                 strcpy(node.permissions,mode.c_str());
                 writeInode(node);

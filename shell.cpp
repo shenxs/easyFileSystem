@@ -29,7 +29,6 @@ vector<string> getJob(){
 
     vector<string> job;
     string line;
-
     //这里很重要,需要先清空,不然会崩溃
     //c++太脏
     cin.clear();
@@ -44,6 +43,8 @@ int work(vector<string> job){
     string str=job[0];
     if(commandMap[str]!=NULL){
         commandMap[str](job);
+    }else if(str==""){
+        eatline();
     }else{
         map<string,FnPtr>::iterator it;
         it=commandMap.find(str);
@@ -65,8 +66,14 @@ void shell(){
 
     job=getJob();
 
-    while(job[0]!="exit")
+    while(1)
     {
+        if(job.size()==0){
+            job=getJob();
+            continue;
+        }else if(job[0]=="exit"){
+            break;
+        }
         work(job);
         job=getJob();
     }
