@@ -50,6 +50,9 @@ int passwd(vector<string> args);
 int edit(vector<string> args);
 int rm(vector<string> args);
 int rmdir(vector<string> args);
+int cp(vector<string> args);
+int ln(vector<string> args);
+int mv(vector<string> args);
 //初始化commandMap()
 void initCommands(){
     commandMap.clear();
@@ -70,7 +73,95 @@ void initCommands(){
     commandMap.insert(pair<string,FnPtr>("passwd",passwd));
     commandMap.insert(pair<string,FnPtr>("edit",edit));
     commandMap.insert(pair<string,FnPtr>("rm",rm));
+    commandMap.insert(pair<string,FnPtr>("cp",cp));
+    commandMap.insert(pair<string,FnPtr>("mv",mv));
+    commandMap.insert(pair<string,FnPtr>("ln",ln));
     commandMap.insert(pair<string,FnPtr>("rmdir",rmdir));
+}
+
+
+//cp source target
+int cp(vector<string> args){
+    return 0;
+}
+
+
+//ln source tartget     建立一个硬链接
+//ln -s source tartget//建立一个软连接
+int ln(vector<string> args){
+    if(args.size()<3){
+        cout<<"命令格式错误"<<endl;
+    }else{
+        if(args[1]=="-s"){
+            //建立软链接,在一个文件中写入source文件的链接地址
+            if(args.size()!=4)
+                return 0;
+            string source=args[2];
+            string target=args[3];
+            if(target.find_first_of("/")==string::npos){
+                //直接在此文件夹中创建链接
+                int id=getInodeidFromDir(currentInode,target);
+                if(id!=-1){
+                    cout<<target<<"已经存在"<<endl;
+                }else{
+                    if(canI(currentInode,currentUser,2)){
+                        int childid=touch(getPath(currentInode)+"/"+target,
+                                "lrwxrwxrwx",currentUser.user_id,currentUser.group_id);
+                        currentInode=readInode(currentInode.inode_id);
+                        Inode temp=readInode(childid);
+                        write2File(temp,source);
+                    }else{
+                        cout<<"你没有此项权限"<<endl;
+                    }
+                }
+            }else{
+                //可能是相对路径或者绝对路径
+                string parent_path=get_parentPath(target);
+                if(leaglePath(currentInode,parent_path)){
+                    Inode node=getInode(currentInode,parent_path);//得到文件夹的Inode
+                    if(node.permissions[0]!='d'){
+                        cout<<node.filename<<"不是文件夹"<<endl;
+                        return 0;
+                    }
+                    //是否已经存在同名文件
+                    string childname=getChildName(target);
+                    int id=getInodeidFromDir(node,childname);
+                    if(id!=-1){
+                        cout<<childname<<"已经存在"<<endl;
+                        return 0;
+                    }else{
+                        if(canI(node,currentUser,2)){
+                            string path=getPath(node);
+                            if(path=="/")
+                                path=path+childname;
+                            else
+                                path=path+"/"+childname;
+                            int child_node_id=touch(path,"lrwxrwxrwx",currentUser.user_id,currentUser.group_id);
+                            Inode temp=readInode(child_node_id);
+                            write2File(temp,source);
+                            currentInode=readInode(currentInode.inode_id);
+                        }else{
+                            cout<<"permission denied"<<endl;
+                        }
+                    }
+
+                }else{
+                    cout<<parent_path<<"不存在"<<endl;
+                }
+            }
+        }else{
+            //建立硬链接
+
+        }
+    }
+    return 0;
+}
+
+
+//mv source target
+int mv(vector<string> args){
+
+    return 0;
 }
 
 
@@ -146,7 +237,7 @@ int rm(vector<string> args){
             }
         }
     }
-
+    return 0;
 }
 //向一个文件内写入一些内容,会将其原来的内容覆盖
 //格式 edit filename something
@@ -160,33 +251,18 @@ int edit(vector<string> args){
             cout<<args[1]<<"不存在"<<endl;
         }else{
             Inode node=readInode(id);
-            if(node.permissions[0]!='f'){
-                cout<<args[1]<<"不是一个文件"<<endl;
+            if(node.permissions[0]=='d'){
+                cout<<args[1]<<"是一个文件夹"<<endl;
             }else{
                 if(canI(node,currentUser,2)){
                     string something=args[2];
-                    reduceFilesize(node,node.filesize);//将其清空
-                    node=readInode(node.inode_id);
-                    //将新的内容写入其中
-                    for(int i=0;i<something.length();i++){
-                        char c=something[i];
-                        int address=getFileAddress(node,i);
-                        opendisk();
-                        fs.seekp(address,ios_base::beg);
-                        fs.write((char*)&c,sizeof(c));
-                        closedisk();
-                        node=readInode(node.inode_id);
-                        node.filesize++;
-                        writeInode(node);
-                    }
-                    cout<<"成功写入"<<endl;
+                    write2File(node,something);
                 }else{
                     cout<<"对不起你没有写入权限"<<endl;
                 }
             }
 
         }
-
     }
     return 0;
 }
@@ -376,8 +452,8 @@ int cat(vector<string> args){
             cout<<file<<"不存在"<<endl;
         }else{
             Inode node=readInode(InodeId);
-            if(node.permissions[0]!='f'){
-                cout<<node.filename<<"不是一个文件"<<endl;
+            if(node.permissions[0]=='d'){
+                cout<<node.filename<<"是一个文件夹"<<endl;
             }else{
                 if(canI(node,currentUser,1)){
                     for(int i=0;i<node.filesize;i++){

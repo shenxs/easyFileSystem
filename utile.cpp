@@ -21,12 +21,14 @@ Inode getInode(string path);
 Inode getInode(Inode parent,string path);
 string getPath(Inode node);
 void init_dir();//创建初始文件夹
+void write2File(Inode node ,string);
 int touch(string path,string permission,int userid,int groupid);
 int saveTopasswd(User user);
 int saveToGroup(Group group);
 int getgroupid(string grpname);
 int getUserId(string usrname);
 int leagleUser(User user);
+bool leaglePath(Inode node ,string path);
 bool canI(Inode node,User user,int action);//用于权限的鉴定
 //dir是一个文件夹,需要其他的参数写在参数里面
 typedef int (*dirFun)(Directory dir,vector<string> args);//处理文件夹的函数
@@ -159,6 +161,8 @@ Inode getInode(Inode parent,string path){
     if(path==""){
         //已近找完了
         return parent;
+    }else if(path.find_first_of("/")==0){
+        return getInode(readInode(0),path.substr(1,path.length()));
     }else if(path.find_first_of("/")==string::npos){
         //最后一项了,可能是文件或文件夹
         int nodeId=getInodeidFromDir(parent,path);
@@ -214,7 +218,6 @@ int touch(string path,string permission,int userid,int groupid){
     strcpy(file.name,childname.c_str());
     file.inode_id=child_node_id;
     addChild2Dir(parent_node,childname,child_node_id);
-
 
     return child_node_id;
 }
@@ -482,6 +485,66 @@ void rmChildFromDir(Inode node,string file){
             }
             cout<<"没找到此文件"<<endl;
         }
+    }
+}
+Inode getInodeorNull(Inode parent,string path){
+    // cout<<path<<endl;
+    if(path==""){
+        //已近找完了
+        return parent;
+    }else if(path.find_first_of("/")==0){
+        return getInode(readInode(0),path.substr(1,path.length()));
+    }else if(path.find_first_of("/")==string::npos){
+        //最后一项了,可能是文件或文件夹
+        int nodeId=getInodeidFromDir(parent,path);
+        if(nodeId==-1){
+            parent.inode_id=-1;
+            return parent;
+        }
+        Inode node=readInode(nodeId);
+        return node;
+    }else{
+        //还有至少各个分隔符所以是文件夹
+        string childname=path.substr(0,path.find_first_of("/"));
+        int nodeId=getInodeidFromDir(parent,childname);
+        if(nodeId==-1){
+            parent.inode_id=-1;
+            return parent;
+        }
+        parent=readInode(nodeId);
+        if(parent.permissions[0]!='d'){
+            parent.inode_id=-1;
+            return parent;
+        }
+        string new_path=path.substr(path.find_first_of("/")+1,path.length());
+        return getInode(parent,new_path);
+    }
+}
+
+
+bool leaglePath(Inode node ,string path){
+    Inode result=getInodeorNull(node,path);
+    if(result.inode_id==-1)
+        return false;
+    else
+        return true;
+}
+
+void write2File(Inode node ,string something){
+
+    reduceFilesize(node,node.filesize);//将其清空
+    node=readInode(node.inode_id);
+    //将新的内容写入其中
+    for(int i=0;i<something.length();i++){
+        char c=something[i];
+        int address=getFileAddress(node,i);
+        opendisk();
+        fs.seekp(address,ios_base::beg);
+        fs.write((char*)&c,sizeof(c));
+        closedisk();
+        node=readInode(node.inode_id);
+        node.filesize++;
+        writeInode(node);
     }
 }
 #endif
