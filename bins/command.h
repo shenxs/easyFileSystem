@@ -111,6 +111,8 @@ int cp(vector<string> args){
                     return 0;
                 }
                 target_name=getChildName(target);
+                if(target=="/")
+                    target_name=source_name;
             }
 
             Inode source_node=getInode(source_parent_node,source_name);
@@ -168,13 +170,10 @@ int cp(vector<string> args){
                 }
 
             }
-
-
         }else{
             cout<<source<<"路径错误"<<endl;
         }
     }
-
     currentInode=readInode(currentInode.inode_id);
 
     return 0;
@@ -342,6 +341,8 @@ int mv(vector<string> args){
                     return 0;
                 }
                 target_name=getChildName(target);
+                if(target=="/")
+                    target_name=source_name;
             }
 
             if(canI(source_parent_node,currentUser,2)){

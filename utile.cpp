@@ -361,6 +361,8 @@ string getPath(Inode node){
 //node当前的节点号,user需要鉴定的用户,action所对应的请求
 //action 1 2 3 对应的是读写和执行
 bool canI(Inode node,User user,int action){//用于权限的鉴定
+    if(user.user_id==0)
+        return true;
     string permission=node.permissions;
     string rwx="rwx";
     if(node.user_id==user.user_id){
