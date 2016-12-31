@@ -419,6 +419,7 @@ void writeLnode(int pos,Lnode lnode){
 }
 
 //将文件的大小减小一个字节
+//需要将磁盘上的内容删除
 void reduceFilesizeBy1byte(Inode node){
     if(node.filesize==0)
         return;
@@ -426,6 +427,12 @@ void reduceFilesizeBy1byte(Inode node){
         int pianyi=node.filesize%sizeof(Block);
         if(pianyi!=1){
             //删除字节后并不需要修改索引
+            int address=getFileAddress(node,node.filesize-1);
+            opendisk();
+            fs.seekp(address,ios_base::beg);
+            char c=0;
+            fs.write((char*)&c,sizeof(c));
+            closedisk();
             node.filesize--;
             writeInode(node);
             return;
@@ -491,13 +498,40 @@ void reduceFilesizeBy1byte(Inode node){
                     writeInode(node);
                 }
             }else if(node.filesize<4*sizeof(Block)+addressNumber*sizeof(Block)+addressNumber*addressNumber*sizeof(Block)){
-                //三级索引
+                //二级索引
                 int x=((node.filesize/(sizeof(Block)))-4-addressNumber)/addressNumber;
                 int y=((node.filesize/sizeof(Block))-4-addressNumber)%addressNumber;
                 int a1=node.blockaddress[5];
                 short a2,a3;
                 opendisk();
                 fs.seekg(sizeof(Block)*a1+x*sizeof(short),ios_base::beg);
+                fs.read((char*)&a2,sizeof(a2));
+                fs.seekg(sizeof(Block)*a2+y*sizeof(short),ios_base::beg);
+                fs.read((char*)&a3,sizeof(a3));
+                char c=0;
+                fs.seekp(a3*sizeof(Block),ios_base::beg);
+                fs.write((char*)&c,sizeof(c));
+                freeBlock(a3);
+
+                short temp =0;
+                //判断是否删除二级索引
+                if(y==0){
+                    fs.seekp(a2*sizeof(Block),ios_base::beg);
+                    fs.write((char*)&temp,sizeof(temp));
+                    freeBlock(a2);
+                }
+
+                //是否删除一级索引
+                if(x==0){
+                    fs.seekp(a1*sizeof(Block),ios_base::beg);
+                    fs.write((char*)&temp,sizeof(temp));
+                    freeBlock(a1);
+                    node.blockaddress[5]=0;
+                }
+
+                node.filesize--;
+                node.blocknum--;
+                writeInode(node);
 
             }
 
