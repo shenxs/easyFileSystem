@@ -214,8 +214,96 @@ int ln(vector<string> args){
 
 
 //mv source target
+//将一个dir写到另一个dir文件夹下
+//名字也要改
 int mv(vector<string> args){
 
+    if(args.size()!=3){
+        cout<<"格式错误"<<endl;
+    }else{
+        string source=args[1];
+        string target=args[2];
+        if(leaglePath(currentInode,source)){
+            Inode source_parent_node,target_parent_node;
+            string source_name,target_name;
+            if(source.find_first_of("/")==string::npos){
+                source_parent_node=currentInode;
+                source_name=source;
+            }else{
+                string parent_path=get_parentPath(source);
+                source_parent_node=getInode(currentInode,parent_path);
+                source_name=getChildName(source);
+            }
+
+            if(target.find_first_of("/")==string::npos){
+                target_parent_node=currentInode;
+                target_name=target;
+            }else{
+                string parent_path=get_parentPath(target);
+                if(leaglePath(currentInode,parent_path)){
+                    target_parent_node=getInode(currentInode,parent_path);
+                }else{
+                    cout<<parent_path<<"不存在"<<endl;
+                    return 0;
+                }
+                target_name=getChildName(target);
+            }
+
+            if(canI(source_parent_node,currentUser,2)){
+                //源文件的读写权
+                int id=getInodeidFromDir(target_parent_node,target_name);
+                if(id==-1){
+                    //如果target不存在就在文件夹中新建一个
+                    if(canI(target_parent_node,currentUser,2)){
+                        if(target_parent_node.permissions[0]!='d'){
+                            cout<<target_parent_node.filename<<"不是文件夹"<<endl;
+                        }else{
+                            int id=getInodeidFromDir(source_parent_node,source_name);
+                            addChild2Dir(target_parent_node,target_name,id);
+                            source_parent_node=readInode(source_parent_node.inode_id);
+                            rmChildFromDir(source_parent_node,source_name);
+                            currentInode=readInode(currentInode.inode_id);
+                        }
+                    }else{
+                        cout<<"permissiom denied"<<endl;
+                    }
+                }else{
+                    //如果target是一个文件夹就将source移到文件夹中
+                    Inode node=readInode(id);
+                    if(node.permissions[0]=='d'){
+                        //在node文件夹下面添加
+                        if(canI(node ,currentUser,2)){
+                            int id=getInodeidFromDir(node,source_name);
+                            if(id==-1){
+                                int id=getInodeidFromDir(source_parent_node,source_name);
+                                addChild2Dir(node,source_name,id);
+                                source_parent_node=readInode(source_parent_node.inode_id);
+                                rmChildFromDir(source_parent_node,source_name);
+                                currentInode=readInode(currentInode.inode_id);
+                            }else{
+                                cout<<source_name<<"已近存在"<<endl;
+                            }
+                        }else{
+                            cout<<node.filename<<" permissiom denied"<<endl;
+                        }
+                    }else{
+                        cout<<target_name<<"不是一个文件夹"<<endl;
+                    }
+                    //如果target是个已近存在的文件那么就不可以
+                }
+
+            }else{
+                cout<<"permission denied"<<endl;
+            }
+
+
+        }else{
+            cout<<"源文件不存在"<<endl;
+        }
+
+
+
+    }
     return 0;
 }
 
