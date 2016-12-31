@@ -49,6 +49,7 @@ int chown(vector<string> args);
 int passwd(vector<string> args);
 int edit(vector<string> args);
 int rm(vector<string> args);
+int rmdir(vector<string> args);
 //初始化commandMap()
 void initCommands(){
     commandMap.clear();
@@ -69,7 +70,47 @@ void initCommands(){
     commandMap.insert(pair<string,FnPtr>("passwd",passwd));
     commandMap.insert(pair<string,FnPtr>("edit",edit));
     commandMap.insert(pair<string,FnPtr>("rm",rm));
+    commandMap.insert(pair<string,FnPtr>("rmdir",rmdir));
 }
+
+
+//删除文件夹,只有当文件夹是空的时候才可以删除
+//格式,rmdir dirname
+int rmdir(vector<string> args){
+    if(args.size()!=2){
+        return 0;
+    }else{
+        int id=getInodeidFromDir(currentInode,args[1]);
+        if(id==-1){
+            cout<<args[1]<<"不存在"<<endl;
+        }else{
+            Inode node=readInode(id);
+            if(node.permissions[0]!='d'){
+                cout<<args[1]<<"不是一个文件夹"<<endl;
+            }else{
+                if(canI(node,currentUser,2)){
+                    if(node.filesize>2*sizeof(Directory)){
+                        cout<<args[1]<<"非空不可以被删除"<<endl;
+                    }else{
+                        if(node.links!=1){
+                            cout<<"请先删除所有硬链接文件"<<endl;
+                        }else{
+                            reduceFilesize(node,node.filesize);
+                            rmChildFromDir(currentInode,args[1]);
+                            rmInode(node.inode_id);
+                            currentInode=readInode(currentInode.inode_id);
+                        }
+                    }
+
+                }else{
+                    cout<<"对不起你没有此权限"<<endl;
+                }
+            }
+        }
+    }
+    return 0;
+}
+
 
 
 //删除当前文件夹下的某个文件,不可以是文件夹
