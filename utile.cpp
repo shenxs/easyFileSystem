@@ -20,6 +20,7 @@ void rmChildFromDir(Inode node,string file);
 Inode getInode(string path);
 Inode getInode(Inode parent,string path);
 string getPath(Inode node);
+string getfileContent(Inode node);
 void init_dir();//创建初始文件夹
 void write2File(Inode node ,string);
 int touch(string path,string permission,int userid,int groupid);
@@ -546,5 +547,19 @@ void write2File(Inode node ,string something){
         node.filesize++;
         writeInode(node);
     }
+}
+//将文件中的内容转化为string类型返回
+string getfileContent(Inode node){
+    string result ="";
+    for(int i=0;i<node.filesize;i++){
+        char c;
+        int address=getFileAddress(node,i);
+        opendisk();
+        fs.seekg(address,ios_base::beg);
+        fs.read((char*)&c,sizeof(c));
+        closedisk();
+        result=c+result;
+    }
+    return result;
 }
 #endif
