@@ -39,7 +39,6 @@ vector<string> getJob(){
 }
 
 int work(vector<string> job){
-
     string str=job[0];
     if(commandMap[str]!=NULL){
         commandMap[str](job);

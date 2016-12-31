@@ -47,6 +47,8 @@ int chgrp(vector<string> args);
 int chmod(vector<string> args);
 int chown(vector<string> args);
 int passwd(vector<string> args);
+int edit(vector<string> args);
+int rm(vector<string> args);
 //初始化commandMap()
 void initCommands(){
     commandMap.clear();
@@ -65,8 +67,58 @@ void initCommands(){
     commandMap.insert(pair<string,FnPtr>("chown",chown));
     commandMap.insert(pair<string,FnPtr>("chgrp",chgrp));
     commandMap.insert(pair<string,FnPtr>("passwd",passwd));
+    commandMap.insert(pair<string,FnPtr>("edit",edit));
+    commandMap.insert(pair<string,FnPtr>("rm",rm));
 }
 
+
+//删除当前文件夹下的某个文件,不可以是文件夹
+//格式 rm filename
+int rm(vector<string> args){
+
+}
+//向一个文件内写入一些内容,会将其原来的内容覆盖
+//格式 edit filename something
+int edit(vector<string> args){
+    if(args.size()!=3){
+        cout<<"格式错误:\n"
+            <<"edit <filename> <something>\n";
+    }else{
+        int id=getInodeidFromDir(currentInode,args[1]);
+        if(id==-1){
+            cout<<args[1]<<"不存在"<<endl;
+        }else{
+            Inode node=readInode(id);
+            if(node.permissions[0]!='f'){
+                cout<<args[1]<<"不是一个文件"<<endl;
+            }else{
+                if(canI(node,currentUser,2)){
+                    string something=args[2];
+                    reduceFilesize(node,node.filesize);//将其清空
+                    node=readInode(node.inode_id);
+                    //将新的内容写入其中
+                    for(int i=0;i<something.length();i++){
+                        char c=something[i];
+                        int address=getFileAddress(node,i);
+                        opendisk();
+                        fs.seekp(address,ios_base::beg);
+                        fs.write((char*)&c,sizeof(c));
+                        closedisk();
+                        node=readInode(node.inode_id);
+                        node.filesize++;
+                        writeInode(node);
+                    }
+                    cout<<"成功写入"<<endl;
+                }else{
+                    cout<<"对不起你没有写入权限"<<endl;
+                }
+            }
+
+        }
+
+    }
+    return 0;
+}
 //格式是 chgrp grpname filename
 //filename是当前目录下的文件,是路径的话可能存在不存在的情况
 int chgrp(vector<string> args){

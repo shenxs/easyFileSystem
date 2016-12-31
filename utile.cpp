@@ -469,10 +469,8 @@ void rmChildFromDir(Inode node,string file){
                     if(i!=dirs-1){
                         //不是最后一个文件夹那么直接将最后一个文件夹填到此处
                     }
-
                     //TODO
                     //改变文件的大小
-
                     return;
                 }
             }
