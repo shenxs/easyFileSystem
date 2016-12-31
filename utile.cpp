@@ -462,15 +462,21 @@ void rmChildFromDir(Inode node,string file){
                 opendisk();
                 fs.seekg(address,ios_base::beg);
                 fs.read((char*)&temp,sizeof(temp));
-
+                closedisk();
                 string name=temp.name;
                 if(name==file){
                     //找到了
                     if(i!=dirs-1){
                         //不是最后一个文件夹那么直接将最后一个文件夹填到此处
+                        int last=getFileAddress(node,(dirs-1)*sizeof(Directory));
+                        opendisk();
+                        fs.seekg(last,ios_base::beg);
+                        fs.read((char*)&temp,sizeof(temp));
+                        fs.seekp(address,ios_base::beg);
+                        fs.write((char*)&temp,sizeof(temp));
+                        closedisk();
                     }
-                    //TODO
-                    //改变文件的大小
+                    reduceFilesize(node,sizeof(Directory));
                     return;
                 }
             }

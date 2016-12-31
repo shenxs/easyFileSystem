@@ -75,6 +75,36 @@ void initCommands(){
 //删除当前文件夹下的某个文件,不可以是文件夹
 //格式 rm filename
 int rm(vector<string> args){
+    //需要删除文件的内容以及文件的Inode,
+    //只有当链接数目是1的时候,需要删除,才会清空源文件
+    if(args.size()<=1){
+        cout<<"格式错误"<<endl;
+    }else if(args.size()==2){
+        int id=getInodeidFromDir(currentInode,args[1]);
+        if(id==-1){
+            cout<<args[1]<<"不存在"<<endl;
+        }else{
+            Inode node=readInode(id);
+            if(node.permissions[0]=='d'){
+                cout<<"删除文件夹请使用rmdir命令\n";
+            }else{
+                if(canI(node,currentUser,2)){
+                    rmChildFromDir(currentInode,args[1]);
+                    if(node.links==1){
+                        reduceFilesize(node,node.filesize);
+                        rmInode(node.inode_id);
+                    }else{
+                        node.links--;
+                        writeInode(node);
+                    }
+                    currentInode=readInode(currentInode.inode_id);
+                    cout<<"成功删除文件"<<endl;
+                }else{
+                    cout<<"你没有此权限"<<endl;
+                }
+            }
+        }
+    }
 
 }
 //向一个文件内写入一些内容,会将其原来的内容覆盖
