@@ -23,6 +23,7 @@ int addInode(Inode inode);
 int rmInode(int id);
 Superblock getSuperBlock();
 int writeSuperBlock(Superblock spb);
+int addChild2Dir(Inode parent_node,Directory dir);
 int addChild2Dir(Inode parent_node,string childname,int inode_id);
 int getaFreeBlockAddress();
 void freeBlock(int n);
@@ -132,6 +133,11 @@ int addInode(Inode inode){
     writeInode(inode);
     return inode.inode_id;
 }
+
+int addChild2Dir(Inode parent_node,Directory dir){
+    return addChild2Dir(parent_node,dir.name,dir.inode_id);
+}
+
 
 //将一个新的子文件添加到parent下
 //返回新的文件项在磁盘上的位置(第多少个字节)

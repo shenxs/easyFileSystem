@@ -493,7 +493,7 @@ Inode getInodeorNull(Inode parent,string path){
         //已近找完了
         return parent;
     }else if(path.find_first_of("/")==0){
-        return getInode(readInode(0),path.substr(1,path.length()));
+        return getInodeorNull(readInode(0),path.substr(1,path.length()));
     }else if(path.find_first_of("/")==string::npos){
         //最后一项了,可能是文件或文件夹
         int nodeId=getInodeidFromDir(parent,path);
@@ -517,11 +517,12 @@ Inode getInodeorNull(Inode parent,string path){
             return parent;
         }
         string new_path=path.substr(path.find_first_of("/")+1,path.length());
-        return getInode(parent,new_path);
+        return getInodeorNull(parent,new_path);
     }
 }
 
 
+//检查从node开始的绝对或者相对路径是否合法
 bool leaglePath(Inode node ,string path){
     Inode result=getInodeorNull(node,path);
     if(result.inode_id==-1)
@@ -531,7 +532,6 @@ bool leaglePath(Inode node ,string path){
 }
 
 void write2File(Inode node ,string something){
-
     reduceFilesize(node,node.filesize);//将其清空
     node=readInode(node.inode_id);
     //将新的内容写入其中

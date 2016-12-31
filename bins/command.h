@@ -86,13 +86,14 @@ int cp(vector<string> args){
 }
 
 
-//ln source tartget     建立一个硬链接
+//ln source target     建立一个硬链接
 //ln -s source tartget//建立一个软连接
 int ln(vector<string> args){
     if(args.size()<3){
         cout<<"命令格式错误"<<endl;
     }else{
         if(args[1]=="-s"){
+
             //建立软链接,在一个文件中写入source文件的链接地址
             if(args.size()!=4)
                 return 0;
@@ -144,14 +145,68 @@ int ln(vector<string> args){
                             cout<<"permission denied"<<endl;
                         }
                     }
-
                 }else{
                     cout<<parent_path<<"不存在"<<endl;
                 }
             }
         }else{
             //建立硬链接
+            if(args.size()!=3){
+                cout<<"命令格式错误"<<endl;
+            }else{
+                string source=args[1];
+                string target=args[2];
+                if(leaglePath(currentInode,source)){
+                    if(leaglePath(currentInode,target)){
+                        cout<<"已经存在同名文件"<<endl;
+                    }else{
+                        Inode source_node=getInode(currentInode,source);
 
+                        if(target.find_first_of("/")==string::npos){
+                            //在当前Inode下新建文件项
+                            if(canI(currentInode,currentUser,2)){
+                                Directory temp;
+                                temp.inode_id=source_node.inode_id;
+                                strcpy(temp.name,target.c_str());
+                                addChild2Dir(currentInode,temp);
+                                source_node.links++;
+                                writeInode(source_node);
+                                currentInode=readInode(currentInode.inode_id);
+                            }else{
+                                cout<<"没有权限"<<endl;
+                            }
+                        }else{
+                            //相对或者绝对路径
+                            string parent_path=get_parentPath(target);
+                            if(leaglePath(currentInode ,parent_path)){
+                                Inode node=getInode(currentInode,parent_path);
+                                if(node.permissions[0]!='d'){
+                                    cout<<"Not a Directory"<<endl;
+                                }else{
+                                    if(canI(node,currentUser,2)){
+                                        Directory temp;
+                                        temp.inode_id=source_node.inode_id;
+                                        string childname=getChildName(target);
+                                        strcpy(temp.name,childname.c_str());
+                                        addChild2Dir(node,temp);
+                                        source_node.links++;
+                                        writeInode(source_node);
+                                        currentInode=readInode(currentInode.inode_id);
+                                    }else{
+                                        cout<<"permission denied"<<endl;
+                                    }
+                                }
+
+                            }else{
+                                cout<<parent_path<<"不存在"<<endl;
+                            }
+                        }
+                    }
+
+                }else{
+                    cout<<"源文件不存在"<<endl;
+                }
+            }
         }
     }
     return 0;
