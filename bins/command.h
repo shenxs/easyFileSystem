@@ -81,7 +81,102 @@ void initCommands(){
 
 
 //cp source target
+//cp source 只能是文件不能是目录
 int cp(vector<string> args){
+    if(args.size()!=3){
+        cout<<"格式错误"<<endl;
+    }else{
+        string source=args[1];
+        string target=args[2];
+        if(leaglePath(currentInode,source)){
+            Inode source_parent_node,target_parent_node;
+            string source_name,target_name;
+            if(source.find_first_of("/")==string::npos){
+                source_parent_node=currentInode;
+                source_name=source;
+            }else{
+                string parent_path=get_parentPath(source);
+                source_parent_node=getInode(currentInode,parent_path);
+                source_name=getChildName(source);
+            }
+            if(target.find_first_of("/")==string::npos){
+                target_parent_node=currentInode;
+                target_name=target;
+            }else{
+                string parent_path=get_parentPath(target);
+                if(leaglePath(currentInode,parent_path)){
+                    target_parent_node=getInode(currentInode,parent_path);
+                }else{
+                    cout<<parent_path<<"不存在"<<endl;
+                    return 0;
+                }
+                target_name=getChildName(target);
+            }
+
+            Inode source_node=getInode(source_parent_node,source_name);
+            if(source_node.permissions[0]=='d'){
+                cout<<"略过目录: "<<source_name<<endl;
+                return 0;
+            }else{
+                //将源文件拷贝为target_name 或者在targetname文件夹下面
+                if(canI(source_node,currentUser,1)){
+                    int id=getInodeidFromDir(target_parent_node,target_name);
+                    if(id==-1){
+                        //在target_parent_node下面添加名字就是target_name
+                        if(canI(target_parent_node,currentUser,2)){
+                            string path=getPath(target_parent_node);
+                            if(path=="/")
+                                path=path+target_name;
+                            else
+                                path=path+"/"+target_name;
+
+                            int copy_node_id=touch(path,"frw-rw-r--",currentUser.user_id,currentUser.group_id);
+                            Inode copynode=readInode(copy_node_id);
+                            //将源文件的内容写入目标文件
+                            string content=getfileContent(source_node);
+                            write2File(copynode,content);
+                        }else{
+                            cout<<"permissiom denied"<<endl;
+                        }
+
+                    }else{
+                        Inode node=readInode(id);
+                        if(node.permissions[0]=='d'){
+                            //在node下面添加名字是源文件名
+                            if(canI(node,currentUser,2)){
+                                string path=getPath(node);
+                                if(path=="/")
+                                    path=path+source_name;
+                                else
+                                    path=path+"/"+source_name;
+                            int copy_node_id=touch(path,"frw-rw-r--",currentUser.user_id,currentUser.group_id);
+                            Inode copynode=readInode(copy_node_id);
+                            string content=getfileContent(source_node);
+                            write2File(copynode,content);
+
+                            }else{
+                                cout<<"permission denied"<<endl;
+                            }
+                        }else{
+                            cout<<node.filename<<"不是一个目录"<<endl;
+                            return 0;
+                        }
+                    }
+
+                }else{
+                    cout<<"无法读取源文件"<<endl;
+                }
+
+            }
+
+
+        }else{
+            cout<<source<<"路径错误"<<endl;
+        }
+    }
+
+    currentInode=readInode(currentInode.inode_id);
+
     return 0;
 }
 
