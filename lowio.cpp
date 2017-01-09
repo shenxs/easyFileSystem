@@ -199,7 +199,7 @@ void freeBlock(int n) {
         // spb中可以新建一个block,初始为0
         writeLnode(sizeof(Block) * (lnode.blocks[0] - 100), lnode);
         Lnode new_lnode;
-        new_lnode.free = 1;
+        new_lnode.free = 2;
         new_lnode.blocks[0]=lnode.blocks[0]-100;
         new_lnode.blocks[1] = n;
         spb.blocks = new_lnode;
