@@ -540,7 +540,7 @@ bool leaglePath(Inode node, string path) {
 }
 
 void write2File(Inode node, string something) {
-    cout<<"要写入文件的内容"<<something<<endl;
+    // cout<<"要写入文件的内容"<<something<<endl;
     reduceFilesize(node, node.filesize); //将其清空
     node = readInode(node.inode_id);
     //将新的内容写入其中

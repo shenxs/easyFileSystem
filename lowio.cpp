@@ -155,43 +155,33 @@ int addChild2Dir(Inode parent_node, string childname, int inode_id) {
 //返回一个可用的空闲块,如果没有空闲块则返回-1
 int getaFreeBlockAddress() {
     Superblock spb = getSuperBlock();
-    if (spb.blocks.free > 1) {
-        spb.blocks.free--;
+    if(spb.blocks.free>1){
+        int result;
+        int point=spb.blocks.free;
+        point--;
+        result=spb.blocks.blocks[point];
+        spb.blocks.free=point;
         writeSuperBlock(spb);
-        return spb.blocks.blocks[spb.blocks.free];
-    } else if (spb.blocks.free == 1) {
-        if (spb.blocks.next_adress == 0) { //已经是最后一组了
-            cout << "磁盘耗尽,没有空余块了" << endl;
+        return result;
+    }else if(spb.blocks.free==1){
+        //最后一块,存着下一个组的情况
+        int point=0;
+        if(spb.blocks.blocks[point]==0){
+            cout<<"磁盘已经用完了"<<endl;
             return -1;
-        } else {
-            //当前的组中所有的块都已经使用了
-            //将现在的lNode写回磁盘
-            Lnode a_lnode;
-            a_lnode.free = spb.blocks.free;
-            a_lnode.next_adress = spb.blocks.next_adress;
-            for (int i = 0; i < 100; i++) {
-                a_lnode.blocks[i] = spb.blocks.blocks[i];
-            }
-            writeLnode(sizeof(Block) * (spb.blocks.next_adress - 100), a_lnode);
-
+        }else{
+            int address=spb.blocks.blocks[0];
+            Lnode lnode;
             opendisk();
-            //将下一组的自由块的Lnode装入spb
-            fs.seekp(sizeof(Block) * spb.blocks.next_adress, ios_base::beg);
-            fs.read((char *)&a_lnode, sizeof(a_lnode));
+            fs.seekg(address*sizeof(Block),ios_base::beg);
+            fs.read((char *)&lnode,sizeof(lnode));
             closedisk();
-
-            spb.blocks.free = a_lnode.free;
-            spb.blocks.next_adress = a_lnode.next_adress;
-            for (int i = 0; i < 100; i++) {
-                spb.blocks.blocks[i] = a_lnode.blocks[i];
-            }
+            spb.blocks=lnode;
             writeSuperBlock(spb);
-            int freeblock = getaFreeBlockAddress();
-            //将spb写回
-            return freeblock;
+            return address;
         }
-    } else {
-        cout << "出现未知错误" << endl;
+    }else{
+        cout<<"未知错误"<<endl;
         return -1;
     }
 }
@@ -207,11 +197,11 @@ void freeBlock(int n) {
     } else {
         //当前已经有100个可以使用的block了,将其写回
         // spb中可以新建一个block,初始为0
-        writeLnode(sizeof(Block) * (lnode.next_adress - 100), lnode);
+        writeLnode(sizeof(Block) * (lnode.blocks[0] - 100), lnode);
         Lnode new_lnode;
-        new_lnode.next_adress = lnode.next_adress - 100;
-        new_lnode.free = 2;
-        new_lnode.blocks[new_lnode.free - 1] = n;
+        new_lnode.free = 1;
+        new_lnode.blocks[0]=lnode.blocks[0]-100;
+        new_lnode.blocks[1] = n;
         spb.blocks = new_lnode;
     }
     writeSuperBlock(spb);
@@ -447,6 +437,8 @@ void reduceFilesizeBy1byte(Inode node) {
                 fs.write((char *)&c, sizeof(c));
                 closedisk();
                 freeBlock(node.blockaddress[tofree]);
+                // cout<<"直接索引"<<endl;
+                // cout<<node.blockaddress[tofree]<<endl;
                 node.blocknum--;
                 node.blockaddress[tofree] = 0;
                 node.filesize--;
@@ -476,6 +468,7 @@ void reduceFilesizeBy1byte(Inode node) {
                     node.blockaddress[4] = 0;
                     node.filesize--;
                     writeInode(node);
+                    // cout<<"释放索引节点\n";
                 } else {
                     //只是将索引块中的一项地址修改
                     int a = node.blockaddress[4];
@@ -490,7 +483,8 @@ void reduceFilesizeBy1byte(Inode node) {
                     char c = 0;
                     fs.write((char *)&c, sizeof(c));
                     closedisk();
-                    freeBlock(a1);
+                    if(a1!=0)
+                        freeBlock(a1);
                     node.filesize--;
                     node.blocknum--;
                     writeInode(node);
@@ -546,8 +540,10 @@ void reduceFilesize(Inode node, int i) {
     if (node.filesize < i) {
         cout << "超出文件大小" << endl;
         return;
+    }else if(node.filesize==0){
+        reduceFilesizeBy1byte(node);
     } else {
-        for (int j = 0; j <= i; j++) {
+        for (int j = 0; j < i; j++) {
             node = readInode(node.inode_id);
             reduceFilesizeBy1byte(node);
         }

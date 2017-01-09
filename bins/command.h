@@ -85,7 +85,7 @@ void initCommands() {
   commandMap.insert(pair<string, FnPtr>("mv", mv));
   commandMap.insert(pair<string, FnPtr>("ln", ln));
   commandMap.insert(pair<string, FnPtr>("rmdir", rmdir));
-  commandMap.insert(pair<string, FnPtr>("showspb", showspb));
+  commandMap.insert(pair<string, FnPtr>("spb", showspb));
   commandMap.insert(pair<string, FnPtr>("showinodes", showinodes));
 }
 
@@ -108,7 +108,7 @@ int showspb(vector<string> args){
 
     cout<<"空闲栈\n";
     cout<<"当前空闲数量"<<spb.blocks.free<<endl;
-    cout<<"下一组地址"<<spb.blocks.next_adress<<endl;
+    // cout<<"下一组地址"<<spb.blocks.next_adress<<endl;
     int j=0;
     for(int i=0;i<spb.blocks.free;i++)
     {
@@ -549,9 +549,6 @@ int edit(vector<string> args) {
             } else {
                 if (canI(node, currentUser, 2)) {
                     string something = args[2];
-                    cout<<"写入的长度"<<something.length()<<endl;
-                    cout<<something<<endl;
-                    cout<<something.max_size()<<endl;
                     write2File(node, something);
                 } else {
                     cout << "对不起你没有写入权限" << endl;

@@ -70,31 +70,51 @@ void init_fs(){
     Lnode a_lnode;
 
     fs.seekp(data_start*sizeof(Block),ios_base::beg);
-    int i;
-    for(i=0;i<((end-start)/block_size/stack_size);i++){
+
+    int lastSub1=(((end-start)/sizeof(Block))/100 )-1;
+
+    for(int i=1;i<=lastSub1;i++){
+        if(i==lastSub1){
+            a_lnode.free=99;
+            a_lnode.blocks[0]=0;
+            for(int j=0;j<stack_size;j++){
+                a_lnode.blocks[j]=data_start+i*100+j;
+            }
+        }
         a_lnode.free=100;
-        a_lnode.next_adress=data_start+(i+1)*100;
         for(int j=0;j<stack_size;j++){
             a_lnode.blocks[j]=data_start+i*100+j;
         }
         fs.write((char*)&a_lnode,sizeof(a_lnode));
-        fs.seekp((48+100*(i+1))*512,ios_base::beg);
+        fs.seekp((48+100*i)*512,ios_base::beg);
     }
-    //除了最后一组,其他的都比较相似
-    streampos near_end=fs.tellp();
-    if(near_end==end){
-        //说明已经结束,需要将最后一组的第一个块中的next修改为0
-        fs.seekp(-(stack_size*block_size),ios_base::cur);
-        a_lnode.next_adress=0;
-        fs.write((char*)&a_lnode,sizeof(a_lnode));
-    }else{
-        //说明最后还有一些不到一百个的块
-        a_lnode.free=(end-near_end)/sizeof(Block);
-        a_lnode.next_adress=0;
-        for(int j=0;j<a_lnode.free;j++){
-            a_lnode.blocks[j]=data_start+i*100+j;
-        }
-    }
+
+    // int i;
+    // for(i=0;i<((end-start)/block_size/stack_size);i++){
+    // a_lnode.free=100;
+    // // a_lnode.next_adress=data_start+(i+1)*100;
+    // for(int j=0;j<stack_size;j++){
+    // a_lnode.blocks[j]=data_start+i*100+j;
+    // }
+    // fs.write((char*)&a_lnode,sizeof(a_lnode));
+    // fs.seekp((48+100*(i+1))*512,ios_base::beg);
+    // }
+
+    // //除了最后一组,其他的都比较相似
+    // streampos near_end=fs.tellp();
+    // if(near_end==end){
+    // //说明已经结束,需要将最后一组的第一个块中的next修改为0
+    // fs.seekp(-(stack_size*block_size),ios_base::cur);
+    // a_lnode.next_adress=0;
+    // fs.write((char*)&a_lnode,sizeof(a_lnode));
+    // }else{
+    // //说明最后还有一些不到一百个的块
+    // a_lnode.free=(end-near_end)/sizeof(Block);
+    // a_lnode.next_adress=0;
+    // for(int j=0;j<a_lnode.free;j++){
+    // a_lnode.blocks[j]=data_start+i*100+j;
+    // }
+    // }
     closedisk();
     //创建必要的文件
     init_dir();
@@ -109,7 +129,7 @@ Superblock init_superBolck(){
     spb.root_inode=0;//根文件夹的inode的下标
     spb.inode_usered=1;//已经使用了的inode的数量,根节点已经使用了一个
     spb.blocks.free=stack_size;
-    spb.blocks.next_adress=stack_size+data_start;
+    // spb.blocks.next_adress=stack_size+data_start;
 
     for(int i=0;i<spb.blocks.free;i++){
         spb.blocks.blocks[i]=data_start+i;

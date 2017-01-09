@@ -34,9 +34,16 @@ void showInode(Inode node){
         <<node.group_id<<"\tgroup_id\n"
         <<node.user_id<<"\tuser_id\n";
 
-    for(int i=0;i<node.blocknum;i++)
-        cout<<"blockaddress["<<i<<"]="<<node.blockaddress[i]<<endl;
 
+    int p=0;
+    for(int i=0;i<node.blocknum;i++)
+    {
+        int address=getFileAddress(node,p);
+        int x=address/sizeof(Block);
+        cout<<"blockaddress["<<i<<"]="<<x<<endl;
+        p+=sizeof(Block);
+
+    }
     showDirContent(node);
     cout<<"==========================================\n";
 }
