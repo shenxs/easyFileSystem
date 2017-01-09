@@ -26,7 +26,7 @@ void init(){
         cout<<"虚拟磁盘打开失败"<<endl;
     }else{
         closedisk();
-        // init_fs();
+        init_fs();
         if(gooddisk()){
 
         }else{

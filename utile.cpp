@@ -540,12 +540,29 @@ bool leaglePath(Inode node, string path) {
 }
 
 void write2File(Inode node, string something) {
+    cout<<"要写入文件的内容"<<something<<endl;
     reduceFilesize(node, node.filesize); //将其清空
     node = readInode(node.inode_id);
     //将新的内容写入其中
     for (int i = 0; i < something.length(); i++) {
         char c = something[i];
         int address = getFileAddress(node, i);
+        opendisk();
+        fs.seekp(address, ios_base::beg);
+        fs.write((char *)&c, sizeof(c));
+        closedisk();
+        node = readInode(node.inode_id);
+        node.filesize++;
+        writeInode(node);
+    }
+}
+
+void append2file(Inode node,string something){
+    node = readInode(node.inode_id);
+    //将新的内容写入其中
+    for (int i = 0; i < something.length(); i++) {
+        char c = something[i];
+        int address = getFileAddress(node, node.filesize);
         opendisk();
         fs.seekp(address, ios_base::beg);
         fs.write((char *)&c, sizeof(c));
@@ -565,7 +582,7 @@ string getfileContent(Inode node) {
         fs.seekg(address, ios_base::beg);
         fs.read((char *)&c, sizeof(c));
         closedisk();
-        result = c + result;
+        result = result + c;
     }
     return result;
 }
