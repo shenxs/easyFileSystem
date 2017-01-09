@@ -197,11 +197,10 @@ void freeBlock(int n) {
     } else {
         //当前已经有100个可以使用的block了,将其写回
         // spb中可以新建一个block,初始为0
-        writeLnode(sizeof(Block) * (lnode.blocks[0] - 100), lnode);
+        writeLnode(sizeof(Block) * n, lnode);
         Lnode new_lnode;
-        new_lnode.free = 2;
-        new_lnode.blocks[0]=lnode.blocks[0]-100;
-        new_lnode.blocks[1] = n;
+        new_lnode.free = 1;
+        new_lnode.blocks[0]=n;
         spb.blocks = new_lnode;
     }
     writeSuperBlock(spb);
@@ -307,13 +306,13 @@ int getFileAddress(Inode node, int i) {
             }
         } else if (i < 4 * sizeof(Block) + addressNumber * sizeof(Block) +
                 addressNumber * addressNumber * sizeof(Block)) {
-            //二级间接
+            // cout<<"二级间接"<<endl;
             short index = 5;
             short a1 = node.blockaddress[index];
             if (i == node.filesize && pianyi == 0) {
-                //需要加入新的块的情况应该有3种
+                // cout<<"需要加入新的块的情况应该有3种"<<endl;
                 if (a1 < data_start || a1 > block_number) {
-                    //从直接索引开始新建
+                    // cout<<"从直接索引开始新建"<<endl;
                     short temp = getaFreeBlockAddress();
                     node.blockaddress[5] = temp;
                     temp = getaFreeBlockAddress();
@@ -331,7 +330,7 @@ int getFileAddress(Inode node, int i) {
                     block_index = temp2;
                 } else {
                     //直接索引有效,检查是否需要一级索引
-                    //先读出一级索引
+                    // cout<<"先读出一级索引"<<endl;
                     int x = ((i / (sizeof(Block))) - 4 - addressNumber) / addressNumber;
                     short a2;
                     opendisk();
@@ -339,7 +338,7 @@ int getFileAddress(Inode node, int i) {
                     fs.read((char *)&a2, sizeof(a2));
                     closedisk();
                     if (a2 < data_start || a2 > block_number) {
-                        //如果a2无效的话
+                        // cout<<"如果a2无效的话"<<endl;
                         a2 = getaFreeBlockAddress();
                         opendisk();
                         fs.seekp(sizeof(Block) * a1 + x * sizeof(short), ios_base::beg);
@@ -354,7 +353,7 @@ int getFileAddress(Inode node, int i) {
                         writeInode(node);
                         block_index = a3;
                     } else {
-                        // a2有效,读出a3
+                        // cout<<"a2有效,读出a3"<<endl;
                         int y = ((i / sizeof(Block)) - 4 - addressNumber) % addressNumber;
                         short a3;
                         opendisk();
@@ -362,7 +361,7 @@ int getFileAddress(Inode node, int i) {
                         fs.read((char *)&a3, sizeof(a3));
                         closedisk();
                         if (a3 < data_start || a3 > block_number) {
-                            // a3无效,需要新建一个块
+                            // cout<<"a3无效,需要新建一个块"<<endl;
                             a3 = getaFreeBlockAddress();
                             opendisk();
                             fs.seekp(a2 * sizeof(Block) + y * sizeof(short), ios_base::beg);
@@ -374,16 +373,21 @@ int getFileAddress(Inode node, int i) {
                         } else {
                             block_index = a3;
                         }
+                        // cout<<"a2有效"<<endl;
                     }
                 }
             } else {
+                // cout<<"else"<<endl;
                 int x = ((i / (sizeof(Block))) - 4 - addressNumber) / addressNumber;
                 int y = ((i / sizeof(Block)) - 4 - addressNumber) % addressNumber;
+                block_index=0;
+
                 opendisk();
-                fs.seekg(index * sizeof(Block) + x * sizeof(short), ios_base::beg);
+                fs.seekg(a1* sizeof(Block) + x * sizeof(short), ios_base::beg);
                 fs.read((char *)&index, sizeof(index));
+                // cout<<index<<endl;
                 fs.seekg(index * sizeof(Block) + y * sizeof(short), ios_base::beg);
-                fs.read((char *)sizeof(block_index), sizeof(block_index));
+                fs.read((char *)&block_index, sizeof(block_index));
                 closedisk();
             }
         } else {
@@ -437,8 +441,6 @@ void reduceFilesizeBy1byte(Inode node) {
                 fs.write((char *)&c, sizeof(c));
                 closedisk();
                 freeBlock(node.blockaddress[tofree]);
-                // cout<<"直接索引"<<endl;
-                // cout<<node.blockaddress[tofree]<<endl;
                 node.blocknum--;
                 node.blockaddress[tofree] = 0;
                 node.filesize--;
@@ -448,7 +450,7 @@ void reduceFilesizeBy1byte(Inode node) {
                     4 * sizeof(Block) + addressNumber * sizeof(Block)) {
                 //一级索引
                 int x = (node.filesize / sizeof(Block)) - 4;
-                if (x == 1) {
+                if (x == 0) {
                     //需要删除一级索引块
                     int a = node.blockaddress[4];
                     opendisk();
@@ -468,7 +470,6 @@ void reduceFilesizeBy1byte(Inode node) {
                     node.blockaddress[4] = 0;
                     node.filesize--;
                     writeInode(node);
-                    // cout<<"释放索引节点\n";
                 } else {
                     //只是将索引块中的一项地址修改
                     int a = node.blockaddress[4];
@@ -483,8 +484,7 @@ void reduceFilesizeBy1byte(Inode node) {
                     char c = 0;
                     fs.write((char *)&c, sizeof(c));
                     closedisk();
-                    if(a1!=0)
-                        freeBlock(a1);
+                    freeBlock(a1);
                     node.filesize--;
                     node.blocknum--;
                     writeInode(node);
@@ -493,7 +493,7 @@ void reduceFilesizeBy1byte(Inode node) {
                     4 * sizeof(Block) + addressNumber * sizeof(Block) +
                     addressNumber * addressNumber * sizeof(Block)) {
                 //二级索引
-                int x = ((node.filesize / (sizeof(Block))) - 4 - addressNumber) /
+                int x = ((node.filesize / sizeof(Block)) - 4 - addressNumber) /
                     addressNumber;
                 int y = ((node.filesize / sizeof(Block)) - 4 - addressNumber) %
                     addressNumber;
@@ -507,21 +507,29 @@ void reduceFilesizeBy1byte(Inode node) {
                 char c = 0;
                 fs.seekp(a3 * sizeof(Block), ios_base::beg);
                 fs.write((char *)&c, sizeof(c));
+                closedisk();
                 freeBlock(a3);
+                cout<<"\t\ta3="<<a3<<endl;
 
                 short temp = 0;
                 //判断是否删除二级索引
                 if (y == 0) {
+                    opendisk();
                     fs.seekp(a2 * sizeof(Block), ios_base::beg);
                     fs.write((char *)&temp, sizeof(temp));
+                    closedisk();
                     freeBlock(a2);
+                    cout<<"\ta2="<<a2<<endl;
                 }
 
                 //是否删除一级索引
-                if (x == 0) {
+                if (x == 0 && y==0) {
+                    opendisk();
                     fs.seekp(a1 * sizeof(Block), ios_base::beg);
                     fs.write((char *)&temp, sizeof(temp));
+                    closedisk();
                     freeBlock(a1);
+                    cout<<"a1="<<a1<<endl;
                     node.blockaddress[5] = 0;
                 }
                 node.filesize--;
@@ -540,8 +548,6 @@ void reduceFilesize(Inode node, int i) {
     if (node.filesize < i) {
         cout << "超出文件大小" << endl;
         return;
-    }else if(node.filesize==0){
-        reduceFilesizeBy1byte(node);
     } else {
         for (int j = 0; j < i; j++) {
             node = readInode(node.inode_id);

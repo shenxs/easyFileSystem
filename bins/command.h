@@ -60,7 +60,7 @@ int ln(vector<string> args);
 int mv(vector<string> args);
 int showspb(vector<string> args);
 int showinodes(vector<string> args);
-
+int db(vector<string> args);
 //初始化commandMap()
 void initCommands() {
   commandMap.clear();
@@ -86,9 +86,25 @@ void initCommands() {
   commandMap.insert(pair<string, FnPtr>("ln", ln));
   commandMap.insert(pair<string, FnPtr>("rmdir", rmdir));
   commandMap.insert(pair<string, FnPtr>("spb", showspb));
-  commandMap.insert(pair<string, FnPtr>("showinodes", showinodes));
+  commandMap.insert(pair<string, FnPtr>("i", showinodes));
+  commandMap.insert(pair<string, FnPtr>("db",db));
 }
 
+int db(vector<string> args){
+    //db file size
+    if(args.size()!=3){
+        return 0;
+    }else{
+        string filename =args[1];
+        int id=getInodeidFromDir(currentInode,filename);
+        Inode node=readInode(id);
+        int size=std::stoi(args[2]);
+        for(int i=0;i<size;i++){
+            append2file(node,"a");
+        }
+    }
+    return 0;
+}
 int showinodes(vector<string> args){
     showInodes();
     return 0;
@@ -503,15 +519,19 @@ int rm(vector<string> args) {
           rmChildFromDir(currentInode, args[1]);
           if (node.links == 1) {
             reduceFilesize(node, node.filesize);
+            //减少文件的大小并不会将最后一个block删除
+            //手动释放最后一个block
+            if(node.filesize==0)
+                freeBlock(node.blockaddress[0]);
             rmInode(node.inode_id);
           } else {
-            node.links--;
-            writeInode(node);
+              node.links--;
+              writeInode(node);
           }
           currentInode = readInode(currentInode.inode_id);
           cout << "成功删除文件" << endl;
         } else {
-          cout << "你没有此权限" << endl;
+            cout << "你没有此权限" << endl;
         }
       }
     }
