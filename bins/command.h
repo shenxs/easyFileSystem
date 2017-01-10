@@ -92,7 +92,6 @@ void initCommands() {
 
 int db(vector<string> args){
     //db file size
-    showspb(vector<string>() );
     if(args.size()!=3){
         return 0;
     }else{
@@ -113,34 +112,7 @@ int showinodes(vector<string> args){
     return 0;
 }
 int showspb(vector<string> args){
-
-    Superblock spb=getSuperBlock();
-
-    cout<<"============================================\n";
-    cout<<"文件系统名"<<spb.fsname<<endl
-        <<"文件系统magicNumber"<<spb.magicnumber<<endl
-        <<"根目录Inode编号"<<spb.root_inode<<endl
-        <<"已经使用的Inode的数量"<<spb.inode_usered<<endl
-        <<"Inode 总数"<<spb.inode_number<<endl;
-
-    cout<<"==============\n";
-
-    cout<<"空闲栈\n";
-    cout<<"当前空闲数量"<<spb.blocks.free<<endl;
-    // cout<<"下一组地址"<<spb.blocks.next_adress<<endl;
-    int j=0;
-    for(int i=0;i<spb.blocks.free;i++)
-    {
-        cout<<spb.blocks.blocks[i]<<" ";
-        if (j==10){
-            cout<<endl;
-            j=0;
-        }else{
-            j++;
-        }
-    }
-
-    cout<<"\n============================================\n";
+    showspb();
     return 0;
 
 }

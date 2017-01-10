@@ -26,7 +26,7 @@ void init(){
         cout<<"虚拟磁盘打开失败"<<endl;
     }else{
         closedisk();
-        init_fs();
+        // init_fs();
         if(gooddisk()){
 
         }else{
@@ -71,7 +71,7 @@ void init_fs(){
 
     fs.seekp(data_start*sizeof(Block),ios_base::beg);
 
-    int lastSub1=(((end-start)/sizeof(Block))/100 )-1;
+    int lastSub1=(((end-start)/sizeof(Block))/100 );
 
     for(int i=1;i<=lastSub1;i++){
         if(i==lastSub1){
@@ -80,41 +80,15 @@ void init_fs(){
             for(int j=0;j<stack_size;j++){
                 a_lnode.blocks[j]=data_start+i*100+j;
             }
+        }else{
+            a_lnode.free=100;
+            for(int j=0;j<stack_size;j++){
+                a_lnode.blocks[j]=data_start+i*100+j;
+            }
+            fs.write((char*)&a_lnode,sizeof(a_lnode));
+            fs.seekp((48+100*i)*512,ios_base::beg);
         }
-        a_lnode.free=100;
-        for(int j=0;j<stack_size;j++){
-            a_lnode.blocks[j]=data_start+i*100+j;
-        }
-        fs.write((char*)&a_lnode,sizeof(a_lnode));
-        fs.seekp((48+100*i)*512,ios_base::beg);
     }
-
-    // int i;
-    // for(i=0;i<((end-start)/block_size/stack_size);i++){
-    // a_lnode.free=100;
-    // // a_lnode.next_adress=data_start+(i+1)*100;
-    // for(int j=0;j<stack_size;j++){
-    // a_lnode.blocks[j]=data_start+i*100+j;
-    // }
-    // fs.write((char*)&a_lnode,sizeof(a_lnode));
-    // fs.seekp((48+100*(i+1))*512,ios_base::beg);
-    // }
-
-    // //除了最后一组,其他的都比较相似
-    // streampos near_end=fs.tellp();
-    // if(near_end==end){
-    // //说明已经结束,需要将最后一组的第一个块中的next修改为0
-    // fs.seekp(-(stack_size*block_size),ios_base::cur);
-    // a_lnode.next_adress=0;
-    // fs.write((char*)&a_lnode,sizeof(a_lnode));
-    // }else{
-    // //说明最后还有一些不到一百个的块
-    // a_lnode.free=(end-near_end)/sizeof(Block);
-    // a_lnode.next_adress=0;
-    // for(int j=0;j<a_lnode.free;j++){
-    // a_lnode.blocks[j]=data_start+i*100+j;
-    // }
-    // }
     closedisk();
     //创建必要的文件
     init_dir();
