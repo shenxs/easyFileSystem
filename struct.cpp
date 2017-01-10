@@ -6,7 +6,7 @@
 //成组链接法的链接节点,记录free数目,下一个组的起始位置,free block的下标
 struct Lnode {
   int free;        //空闲块的数量
-  int next_adress; //下一个组的开头的块号
+  // int next_adress; //下一个组的开头的块号
   int blocks[100];
 };
 

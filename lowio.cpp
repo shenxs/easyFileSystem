@@ -6,6 +6,11 @@
 #include <iostream>
 #include <string.h>
 #include <string>
+#include <execinfo.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <signal.h>
 // #include"utile.cpp"
 using namespace std;
 //底层的磁盘的读写,读取写入spb,inode,添加一个目录项
@@ -156,32 +161,40 @@ int addChild2Dir(Inode parent_node, string childname, int inode_id) {
 int getaFreeBlockAddress() {
     Superblock spb = getSuperBlock();
     if(spb.blocks.free>1){
-        int result;
+        int result=0;
         int point=spb.blocks.free;
+        if(point>100)
+            cout<<"point大于100";
         point--;
         result=spb.blocks.blocks[point];
         spb.blocks.free=point;
         writeSuperBlock(spb);
+        if(result<48||result>2048)
+            cout<<"空闲块地址出错"<<endl;
         return result;
     }else if(spb.blocks.free==1){
         //最后一块,存着下一个组的情况
-        int point=0;
-        if(spb.blocks.blocks[point]==0){
+        if(spb.blocks.blocks[0]==0){
             cout<<"磁盘已经用完了"<<endl;
             return -1;
         }else{
             int address=spb.blocks.blocks[0];
+            // cout<<"用完了一组"<<endl<<address<<endl;
             Lnode lnode;
             opendisk();
             fs.seekg(address*sizeof(Block),ios_base::beg);
             fs.read((char *)&lnode,sizeof(lnode));
             closedisk();
+            if(lnode.free>100){
+                cout<<address<<endl;
+                cout<<"出现错误,读取盘块栈出错"<<endl;
+            }
             spb.blocks=lnode;
             writeSuperBlock(spb);
             return address;
         }
     }else{
-        cout<<"未知错误"<<endl;
+        cout<<"获取未使用的盘块时出,现未知错误"<<endl;
         return -1;
     }
 }
@@ -194,6 +207,7 @@ void freeBlock(int n) {
         lnode.blocks[lnode.free] = n;
         lnode.free++;
         spb.blocks = lnode;
+        writeSuperBlock(spb);
     } else {
         //当前已经有100个可以使用的block了,将其写回
         // spb中可以新建一个block,初始为0
@@ -202,8 +216,8 @@ void freeBlock(int n) {
         new_lnode.free = 1;
         new_lnode.blocks[0]=n;
         spb.blocks = new_lnode;
+        writeSuperBlock(spb);
     }
-    writeSuperBlock(spb);
 }
 
 //将某个目录项写到pos所指的地方
@@ -385,7 +399,6 @@ int getFileAddress(Inode node, int i) {
                 opendisk();
                 fs.seekg(a1* sizeof(Block) + x * sizeof(short), ios_base::beg);
                 fs.read((char *)&index, sizeof(index));
-                // cout<<index<<endl;
                 fs.seekg(index * sizeof(Block) + y * sizeof(short), ios_base::beg);
                 fs.read((char *)&block_index, sizeof(block_index));
                 closedisk();
@@ -508,20 +521,9 @@ void reduceFilesizeBy1byte(Inode node) {
                 fs.seekp(a3 * sizeof(Block), ios_base::beg);
                 fs.write((char *)&c, sizeof(c));
                 closedisk();
-                freeBlock(a3);
-                cout<<"\t\ta3="<<a3<<endl;
+                // cout<<"\t\ta3="<<a3<<endl;
 
                 short temp = 0;
-                //判断是否删除二级索引
-                if (y == 0) {
-                    opendisk();
-                    fs.seekp(a2 * sizeof(Block), ios_base::beg);
-                    fs.write((char *)&temp, sizeof(temp));
-                    closedisk();
-                    freeBlock(a2);
-                    cout<<"\ta2="<<a2<<endl;
-                }
-
                 //是否删除一级索引
                 if (x == 0 && y==0) {
                     opendisk();
@@ -529,9 +531,22 @@ void reduceFilesizeBy1byte(Inode node) {
                     fs.write((char *)&temp, sizeof(temp));
                     closedisk();
                     freeBlock(a1);
-                    cout<<"a1="<<a1<<endl;
+                    // cout<<"a1="<<a1<<endl;
                     node.blockaddress[5] = 0;
                 }
+
+                //判断是否删除二级索引
+                if (y == 0) {
+                    opendisk();
+                    fs.seekp(a2 * sizeof(Block), ios_base::beg);
+                    fs.write((char *)&temp, sizeof(temp));
+                    closedisk();
+                    freeBlock(a2);
+                    // cout<<"\ta2="<<a2<<endl;
+                }
+
+                freeBlock(a3);
+
                 node.filesize--;
                 node.blocknum--;
                 writeInode(node);

@@ -92,11 +92,14 @@ void initCommands() {
 
 int db(vector<string> args){
     //db file size
+    showspb(vector<string>() );
     if(args.size()!=3){
         return 0;
     }else{
         string filename =args[1];
         int id=getInodeidFromDir(currentInode,filename);
+        if(id==-1)
+            return 0;
         Inode node=readInode(id);
         int size=std::stoi(args[2]);
         for(int i=0;i<size;i++){

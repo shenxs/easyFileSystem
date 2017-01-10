@@ -36,7 +36,7 @@ void showInode(Inode node){
 
 
     int p=0;
-    for(int i=0;i<node.blocknum;i++)
+    for(int i=0;p<node.filesize;i++)
     {
         int address=getFileAddress(node,p);
         int x=address/sizeof(Block);
