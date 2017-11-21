@@ -58,16 +58,17 @@ int work(vector<string> job) {
 }
 
 void shell() {
+
   vector<string> job;
   login(job);
   initCommands(); //将所有的命令进行装载
   job = getJob();
   while (1) {
     if (job.size() == 0) {
-      job = getJob();
-      continue;
+        job = getJob();
+        continue;
     } else if (job[0] == "exit") {
-      break;
+        break;
     }
     work(job);
     job = getJob();
